@@ -24,6 +24,7 @@ th,td{padding:10px 12px;text-align:right;border-bottom:1px solid var(--line);whi
 th:first-child,td:first-child,th:nth-child(2),td:nth-child(2){text-align:left}
 th{font-weight:700;color:var(--mute);cursor:pointer;user-select:none;position:sticky;top:0;background:var(--surface)}
 th[aria-sort]::after{content:attr(data-arrow);margin-left:4px}
+th[data-arrow$="₂"]{opacity:.65}
 tr:last-child td{border-bottom:0}
 tr.good td{background:var(--good-bg)}
 .pill{display:inline-block;padding:2px 8px;border-radius:99px;font-weight:700;font-size:13px;background:var(--line)}
@@ -42,7 +43,17 @@ a:focus-visible,th:focus-visible,select:focus-visible,input:focus-visible{outlin
 <p class="sub">Samlet tilbagebetaling = udbetaling + månedlig ydelse × løbetid. Et tilbud er godt, når det er under 50 % af bilens nypris.</p>
 <div class="bar">
   <select id="brand" aria-label="Mærke"><option value="">Alle mærker</option></select>
+  <select id="km" aria-label="Km pr. år"><option value="">Alle km pr. år</option></select>
+  <select id="down" aria-label="Førstegangsydelse"><option value="">Alle førstegangsydelser</option></select>
   <input id="q" type="search" placeholder="Søg model" aria-label="Søg model">
+  <select id="sort" aria-label="Sortér efter">
+    <option value="model,monthly">Sortér: Model, derefter pris pr. md.</option>
+    <option value="monthly,model">Sortér: Pris pr. md. (lavest først)</option>
+    <option value="total,model">Sortér: Samlet tilbagebetaling (lavest først)</option>
+    <option value="ratio,model">Sortér: Andel af nypris (lavest først)</option>
+    <option value="down,monthly">Sortér: Førstegangsydelse (lavest først)</option>
+    <option value="km,monthly">Sortér: Km pr. år (lavest først)</option>
+  </select>
   <label class="chk"><input id="onlyGood" type="checkbox"> Kun gode tilbud</label>
   <span class="stat" id="stat"></span>
 </div>
@@ -53,13 +64,19 @@ a:focus-visible,th:focus-visible,select:focus-visible,input:focus-visible{outlin
 <script>
 const COLS=[["brand","Mærke"],["model","Model"],["monthly","Pr. md."],["down","Udbetaling"],["months","Mdr."],["km","Km/år"],["total","Samlet"],["new_price","Nypris"],["ratio","Andel af nypris"]];
 const kr=n=>n==null?"–":n.toLocaleString("da-DK")+" kr.";
-let all=[],sort={k:"ratio",dir:1};
+let all=[],stack=[{k:"model",dir:1},{k:"monthly",dir:1}];
 const $=id=>document.getElementById(id);
-function head(){$("head").innerHTML=COLS.map(([k,l])=>`<th tabindex="0" data-k="${k}" ${sort.k===k?`aria-sort="${sort.dir>0?"ascending":"descending"}" data-arrow="${sort.dir>0?"↑":"↓"}"`:""}>${l}</th>`).join("")}
+const KEY={model:o=>o.model+" "+o.variant};
+const val=(o,k)=>(KEY[k]||(x=>x[k]))(o);
+function cmp(a,b){for(const s of stack){const x=val(a,s.k),y=val(b,s.k);if(x==null&&y==null)continue;if(x==null)return 1;if(y==null)return-1;
+  const c=typeof x==="string"?x.localeCompare(y,"da",{numeric:true}):x-y;if(c)return c*s.dir}return 0}
+function head(){$("head").innerHTML=COLS.map(([k,l])=>{const i=stack.findIndex(s=>s.k===k);
+  const arrow=i<0?"":` data-arrow="${stack[i].dir>0?"↑":"↓"}${i?"₂":""}"`;
+  return `<th tabindex="0" data-k="${k}" ${i<0?"":`aria-sort="${stack[i].dir>0?"ascending":"descending"}"`}${arrow}>${l}</th>`}).join("")}
+function fill(id,vals,fmt){$(id).insertAdjacentHTML("beforeend",[...new Set(vals)].sort((a,b)=>a-b).map(v=>`<option value="${v}">${fmt(v)}</option>`).join(""))}
 function render(){
-  const b=$("brand").value,q=$("q").value.toLowerCase(),g=$("onlyGood").checked;
-  let r=all.filter(o=>(!b||o.brand_id===b)&&(!g||o.good)&&(o.model+" "+o.variant).toLowerCase().includes(q));
-  r.sort((x,y)=>{const a=x[sort.k],c=y[sort.k];if(a==null)return 1;if(c==null)return-1;return(a>c?1:a<c?-1:0)*sort.dir});
+  const b=$("brand").value,q=$("q").value.toLowerCase(),g=$("onlyGood").checked,km=$("km").value,dn=$("down").value;
+  const r=all.filter(o=>(!b||o.brand_id===b)&&(!g||o.good)&&(!km||o.km==km)&&(dn===""||o.down==dn)&&(o.model+" "+o.variant).toLowerCase().includes(q)).sort(cmp);
   head();
   $("stat").textContent=`${r.length} tilbud · ${r.filter(o=>o.good).length} gode`;
   $("body").innerHTML=r.length?r.map(o=>{
@@ -68,13 +85,17 @@ function render(){
     return `<tr class="${o.good?"good":""}"><td>${o.brand}</td><td><a href="${o.link}" target="_blank" rel="noopener">${o.model}</a> ${o.variant||""}</td>
     <td>${kr(o.monthly)}${ch}</td><td>${kr(o.down)}</td><td>${o.months}</td><td>${o.km.toLocaleString("da-DK")}</td>
     <td>${kr(o.total)}</td><td>${kr(o.new_price)}</td><td><span class="pill">${o.ratio==null?"mangler nypris":(o.ratio*100).toFixed(1).replace(".",",")+" %"}</span></td></tr>`}).join("")
-  :`<tr><td colspan="9" class="empty">Ingen tilbud endnu. Udfyld selectors i brands.yaml og kør scraperen.</td></tr>`;
+  :`<tr><td colspan="9" class="empty">Ingen tilbud matcher dine filtre.</td></tr>`;
 }
-$("head").addEventListener("click",e=>{const k=e.target.dataset.k;if(!k)return;sort=sort.k===k?{k,dir:-sort.dir}:{k,dir:1};render()});
+$("head").addEventListener("click",e=>{const k=e.target.dataset.k;if(!k)return;
+  stack=stack[0].k===k?[{k,dir:-stack[0].dir},...stack.slice(1)]:[{k,dir:1},...stack.filter(s=>s.k!==k)].slice(0,2);render()});
 $("head").addEventListener("keydown",e=>{if(e.key==="Enter")e.target.click()});
-["brand","q","onlyGood"].forEach(i=>$(i).addEventListener("input",render));
+["brand","q","onlyGood","km","down"].forEach(i=>$(i).addEventListener("input",render));
+$("sort").addEventListener("input",e=>{stack=e.target.value.split(",").map(k=>({k,dir:1}));render()});
 fetch("data/offers.json").then(r=>r.json()).then(d=>{
   all=d.offers;
+  fill("km",all.map(o=>o.km),v=>v.toLocaleString("da-DK")+" km");
+  fill("down",all.map(o=>o.down),v=>kr(v));
   const ids=[...new Map(all.map(o=>[o.brand_id,o.brand]))];
   $("brand").insertAdjacentHTML("beforeend",ids.map(([i,n])=>`<option value="${i}">${n}</option>`).join(""));
   const bad=Object.entries(d.status).filter(([,s])=>!s.ok).map(([k])=>k);
