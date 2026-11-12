@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="da">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prishistorik – privatleasing</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;700;800&display=swap">
+<style>
+:root{--bg:#f4f6f3;--surface:#fff;--ink:#16201b;--mute:#5d6a63;--line:#d9dfda;--good:#0b6b4d;--bad:#a43a1f;--font:"Schibsted Grotesk",system-ui,sans-serif;color-scheme:light}
+@media (prefers-color-scheme:dark){:root{--bg:#111815;--surface:#18211d;--ink:#e8efea;--mute:#9aa8a0;--line:#2a3730;--good:#5fd3a2;--bad:#f09070;color-scheme:dark}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 15px/1.5 var(--font);font-variant-numeric:tabular-nums}
+main{max-width:min(1700px,100%);margin:0 auto;padding:32px 20px 64px}
+nav{margin-bottom:12px;color:var(--mute)}nav a{color:var(--ink)}
+h1{font-size:clamp(28px,5vw,44px);line-height:1.05;margin:0 0 8px;font-weight:800;letter-spacing:-.02em}
+.sub{color:var(--mute);max-width:70ch;margin:0 0 24px}
+.bar{display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin-bottom:16px}
+select,input[type=search]{font:inherit;color:inherit;background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:8px 10px}
+label.chk{display:flex;gap:6px;align-items:center}
+.stat{margin-left:auto;color:var(--mute)}
+.wrap{overflow-x:auto;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{padding:8px 10px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
+th:nth-child(-n+2),td:nth-child(-n+2){text-align:left}
+td:nth-child(2){white-space:normal;min-width:11em}
+th{font-weight:700;color:var(--mute);cursor:pointer;user-select:none;position:sticky;top:0;background:var(--surface)}
+th[aria-sort]::after{content:attr(data-arrow);margin-left:4px}
+tr.row{cursor:pointer}tr.row:hover td{background:color-mix(in srgb,var(--line) 35%,transparent)}
+.up{color:var(--bad)}.down{color:var(--good)}
+.old{color:var(--mute);font-size:13px}
+tr.det td{background:color-mix(in srgb,var(--line) 25%,transparent);white-space:normal;text-align:left;padding:14px 18px}
+.tl{display:flex;flex-wrap:wrap;gap:24px;align-items:flex-start}
+.tl table{width:auto;min-width:340px;font-size:14px}.tl th{position:static;cursor:default}
+svg{max-width:100%}
+a{color:inherit}
+.empty{padding:40px 20px;text-align:center;color:var(--mute)}
+:focus-visible{outline:2px solid var(--good);outline-offset:2px}
+</style>
+</head>
+<body>
+<main>
+<nav><a href="index.html">Aktuelle tilbud</a> · <b>Prishistorik</b></nav>
+<h1>Prishistorik</h1>
+<p class="sub">Opslagsværk over alle priser, der er indhentet over tid. Når prisen på en bil ændrer sig, gemmes den gamle pris her, og den nye vises på siden med aktuelle tilbud. Klik på en række for at se hele forløbet.</p>
+<div class="bar">
+  <select id="brand" aria-label="Mærke"><option value="">Alle mærker</option></select>
+  <select id="km" aria-label="Km pr. år"><option value="">Alle km pr. år</option></select>
+  <select id="down" aria-label="Førstegangsydelse"><option value="">Alle førstegangsydelser</option></select>
+  <input id="q" type="search" placeholder="Søg model" aria-label="Søg model">
+  <label class="chk"><input id="chg" type="checkbox"> Kun biler med prisændringer</label>
+  <span class="stat" id="stat"></span>
+</div>
+<div class="wrap"><table><thead><tr id="head"></tr></thead><tbody id="body"></tbody></table></div>
+<p class="sub" id="note" style="margin-top:16px"></p>
+</main>
+<script>
+const COLS=[["brand","Mærke"],["name","Model"],["down","Udbetaling"],["km","Km/år"],["first","Første pris"],["last","Seneste pris pr. mdr."],["diff","Ændring i alt"],["n","Antal ændringer"],["seen","Sidst set"]];
+const $=id=>document.getElementById(id), kr=n=>n==null?"–":n.toLocaleString("da-DK")+" kr.";
+const dato=d=>new Date(d).toLocaleDateString("da-DK",{day:"numeric",month:"short",year:"numeric"});
+const sgn=n=>`<span class="${n>0?"up":"down"}">${n>0?"▲":"▼"} ${Math.abs(n).toLocaleString("da-DK")} kr.</span>`;
+let rows=[],stack=[{k:"name",dir:1},{k:"down",dir:1},{k:"km",dir:1}],open=new Set(),latest=null;
+function cmp(a,b){for(const s of stack){const x=a[s.k],y=b[s.k];if(x==null&&y==null)continue;if(x==null)return 1;if(y==null)return-1;
+  const c=typeof x==="string"?x.localeCompare(y,"da",{numeric:true}):x-y;if(c)return c*s.dir}return 0}
+function head(){$("head").innerHTML=COLS.map(([k,l])=>{const i=stack.findIndex(s=>s.k===k);
+  return `<th tabindex="0" data-k="${k}" ${i<0?"":`aria-sort="${stack[i].dir>0?"ascending":"descending"}" data-arrow="${stack[i].dir>0?"↑":"↓"}"`}>${l}</th>`}).join("")}
+function chart(p){ // enkelt trappe-diagram over prisen pr. måned
+  if(p.length<2)return"";const W=360,H=120,m=28,ys=p.map(x=>x[1]),lo=Math.min(...ys),hi=Math.max(...ys),sp=hi-lo||1;
+  const t=p.map(x=>+new Date(x[0])),t0=t[0],t1=t[t.length-1]||t0+1,dx=t1-t0||1;
+  const X=i=>m+(t[i]-t0)/dx*(W-2*m),Y=v=>H-m-(v-lo)/sp*(H-2*m);let d=`M${X(0)},${Y(p[0][1])}`;
+  for(let i=1;i<p.length;i++)d+=` H${X(i)} V${Y(p[i][1])}`;d+=` H${W-m}`;
+  return `<svg viewBox="0 0 ${W} ${H}" width="${W}" role="img" aria-label="Prisudvikling pr. måned"><path d="${d}" fill="none" stroke="var(--good)" stroke-width="2"/>
+  <text x="${m}" y="12" font-size="11" fill="var(--mute)">${hi.toLocaleString("da-DK")} kr.</text><text x="${m}" y="${H-6}" font-size="11" fill="var(--mute)">${lo.toLocaleString("da-DK")} kr.</text></svg>`}
+function detail(r){const p=r.prices;
+  return `<tr class="det"><td colspan="9"><div class="tl"><table><thead><tr><th>Dato</th><th style="text-align:right">Pr. mdr.</th><th style="text-align:right">Ændring</th><th style="text-align:right">Samlet</th></tr></thead><tbody>`+
+  [...p].reverse().map((x,i,a)=>{const prev=a[i+1];return `<tr><td>${dato(x[0])}${i===0?" (seneste)":""}</td><td style="text-align:right">${kr(x[1])}</td><td style="text-align:right">${prev?sgn(x[1]-prev[1]):"første observation"}</td><td style="text-align:right">${x[2]?kr(x[2]):"–"}</td></tr>`}).join("")+
+  `</tbody></table>${chart(p)}</div><p class="old">Nypris: ${kr(r.new_price)} · Løbetid: ${r.months} mdr.${r.link?` · <a href="${r.link}" target="_blank" rel="noopener">Se tilbud hos forhandler</a>`:""}</p></td></tr>`}
+function render(){
+  const b=$("brand").value,q=$("q").value.toLowerCase(),km=$("km").value,dn=$("down").value,c=$("chg").checked;
+  const r=rows.filter(x=>(!b||x.brand_id===b)&&(!km||x.km==km)&&(dn===""||x.down==dn)&&(!c||x.n>0)&&x.name.toLowerCase().includes(q)).sort(cmp);
+  head();$("stat").textContent=`${r.length} biler · ${r.reduce((a,x)=>a+x.n,0)} prisændringer`;
+  $("body").innerHTML=r.length?r.map(x=>`<tr class="row" tabindex="0" data-id="${x.id}"><td>${x.brand}</td><td>${x.name}</td><td>${kr(x.down)}</td><td>${x.km.toLocaleString("da-DK")}</td>
+    <td>${kr(x.first)}</td><td>${kr(x.last)}</td><td>${x.n?sgn(x.diff):"–"}</td><td>${x.n}</td>
+    <td class="${x.seen<latest?"old":""}">${dato(x.seen)}${x.seen<latest?" (udgået?)":""}</td></tr>${open.has(x.id)?detail(x):""}`).join("")
+  :`<tr><td colspan="9" class="empty">Ingen biler matcher. Historikken opbygges, efterhånden som scraperen kører.</td></tr>`;
+}
+$("head").addEventListener("click",e=>{const k=e.target.dataset.k;if(!k)return;
+  stack=stack[0].k===k?[{k,dir:-stack[0].dir},...stack.slice(1)]:[{k,dir:1},...stack.filter(s=>s.k!==k)].slice(0,3);render()});
+$("body").addEventListener("click",e=>{const tr=e.target.closest("tr.row");if(!tr||e.target.closest("a"))return;const id=tr.dataset.id;open.has(id)?open.delete(id):open.add(id);render()});
+$("body").addEventListener("keydown",e=>{if(e.key==="Enter")e.target.click()});
+$("head").addEventListener("keydown",e=>{if(e.key==="Enter")e.target.click()});
+["brand","km","down","q","chg"].forEach(i=>$(i).addEventListener("input",render));
+Promise.all([fetch("data/history.json").then(r=>r.ok?r.json():{}),fetch("data/offers.json").then(r=>r.ok?r.json():{offers:[]})]).then(([h,o])=>{
+  const meta=Object.fromEntries((o.offers||[]).map(x=>[x.id,x]));
+  rows=Object.entries(h).map(([id,v])=>{const hv=Array.isArray(v)?{prices:v}:v,m={...meta[id],...hv},p=hv.prices;if(!m.brand||!p||!p.length)return null;
+    return {id,brand:m.brand,brand_id:m.brand_id,name:(m.model+" "+(m.variant||"")).trim(),down:m.down,km:m.km,months:m.months,new_price:m.new_price,link:m.link,prices:p,
+      first:p[0][1],last:p[p.length-1][1],diff:p[p.length-1][1]-p[0][1],n:p.length-1,seen:m.last_seen||p[p.length-1][0]}}).filter(Boolean);
+  latest=rows.reduce((a,x)=>x.seen>a?x.seen:a,"");
+  const fill=(id,vals,f)=>$(id).insertAdjacentHTML("beforeend",[...new Set(vals)].sort((a,b)=>a-b).map(v=>`<option value="${v}">${f(v)}</option>`).join(""));
+  $("brand").insertAdjacentHTML("beforeend",[...new Map(rows.map(x=>[x.brand_id,x.brand]))].map(([i,n])=>`<option value="${i}">${n}</option>`).join(""));
+  fill("km",rows.map(x=>x.km),v=>v.toLocaleString("da-DK")+" km");fill("down",rows.map(x=>x.down),kr);
+  $("note").textContent=o.updated?`Data senest opdateret ${new Date(o.updated).toLocaleString("da-DK")}.`:"";render();
+}).catch(()=>{$("body").innerHTML='<tr><td colspan="9" class="empty">Kunne ikke indlæse data/history.json (åbn siden via en webserver, ikke som fil).</td></tr>'});
+</script>
+</body>
+</html>
