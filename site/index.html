@@ -11,7 +11,8 @@
 @media (prefers-color-scheme:dark){:root{--bg:#111815;--surface:#18211d;--ink:#e8efea;--mute:#9aa8a0;--line:#2a3730;--good:#5fd3a2;--good-bg:#12362a;--bad:#f09070;color-scheme:dark}}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);font:400 15px/1.5 var(--font);font-variant-numeric:tabular-nums}
-main{max-width:1100px;margin:0 auto;padding:32px 20px 64px}
+nav{margin-bottom:12px;color:var(--mute)}nav a{color:var(--ink)}
+main{max-width:min(1700px,100%);margin:0 auto;padding:32px 20px 64px}
 h1{font-size:clamp(28px,5vw,44px);line-height:1.05;margin:0 0 8px;font-weight:800;letter-spacing:-.02em}
 .sub{color:var(--mute);max-width:62ch;margin:0 0 24px}
 .bar{display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin-bottom:16px}
@@ -19,8 +20,9 @@ select,input[type=search]{font:inherit;color:inherit;background:var(--surface);b
 label.chk{display:flex;gap:6px;align-items:center}
 .stat{margin-left:auto;color:var(--mute)}
 .wrap{overflow-x:auto;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
-table{width:100%;border-collapse:collapse;min-width:860px}
-th,td{padding:10px 12px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{padding:8px 10px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
+td:nth-child(2){white-space:normal;min-width:11em}
 th:first-child,td:first-child,th:nth-child(2),td:nth-child(2){text-align:left}
 th{font-weight:700;color:var(--mute);cursor:pointer;user-select:none;position:sticky;top:0;background:var(--surface)}
 th[aria-sort]::after{content:attr(data-arrow);margin-left:4px}
@@ -39,6 +41,7 @@ a:focus-visible,th:focus-visible,select:focus-visible,input:focus-visible{outlin
 </head>
 <body>
 <main>
+<nav><b>Aktuelle tilbud</b> · <a href="historik.html">Prishistorik</a></nav>
 <h1>Privatleasing i Danmark</h1>
 <p class="sub">Samlet tilbagebetaling = udbetaling + månedlig ydelse × løbetid. Et tilbud er godt, når det er under 50 % af bilens nypris.</p>
 <div class="bar">
@@ -47,6 +50,7 @@ a:focus-visible,th:focus-visible,select:focus-visible,input:focus-visible{outlin
   <select id="down" aria-label="Førstegangsydelse"><option value="">Alle førstegangsydelser</option></select>
   <input id="q" type="search" placeholder="Søg model" aria-label="Søg model">
   <select id="sort" aria-label="Sortér efter">
+    <option value="model,down,km">Sortér: Model, udbetaling, km pr. år</option>
     <option value="model,monthly">Sortér: Model, derefter pris pr. md.</option>
     <option value="monthly,model">Sortér: Pris pr. md. (lavest først)</option>
     <option value="total,model">Sortér: Samlet tilbagebetaling (lavest først)</option>
@@ -62,9 +66,9 @@ a:focus-visible,th:focus-visible,select:focus-visible,input:focus-visible{outlin
 <p class="status" id="status"></p>
 </main>
 <script>
-const COLS=[["brand","Mærke"],["model","Model"],["monthly","Pr. md."],["down","Udbetaling"],["months","Mdr."],["km","Km/år"],["total","Samlet"],["new_price","Nypris"],["ratio","Andel af nypris"]];
+const COLS=[["brand","Mærke"],["model","Model"],["monthly","Pr. mdr. fra"],["down","Udbetaling"],["months","Løbetid mdr."],["km","Km/år"],["total","Samlet"],["new_price","Nypris"],["ratio","Andel af nypris"]];
 const kr=n=>n==null?"–":n.toLocaleString("da-DK")+" kr.";
-let all=[],stack=[{k:"model",dir:1},{k:"monthly",dir:1}];
+let all=[],stack=[{k:"model",dir:1},{k:"down",dir:1},{k:"km",dir:1}];
 const $=id=>document.getElementById(id);
 const KEY={model:o=>o.model+" "+o.variant};
 const val=(o,k)=>(KEY[k]||(x=>x[k]))(o);
@@ -88,7 +92,7 @@ function render(){
   :`<tr><td colspan="9" class="empty">Ingen tilbud matcher dine filtre.</td></tr>`;
 }
 $("head").addEventListener("click",e=>{const k=e.target.dataset.k;if(!k)return;
-  stack=stack[0].k===k?[{k,dir:-stack[0].dir},...stack.slice(1)]:[{k,dir:1},...stack.filter(s=>s.k!==k)].slice(0,2);render()});
+  stack=stack[0].k===k?[{k,dir:-stack[0].dir},...stack.slice(1)]:[{k,dir:1},...stack.filter(s=>s.k!==k)].slice(0,3);render()});
 $("head").addEventListener("keydown",e=>{if(e.key==="Enter")e.target.click()});
 ["brand","q","onlyGood","km","down"].forEach(i=>$(i).addEventListener("input",render));
 $("sort").addEventListener("input",e=>{stack=e.target.value.split(",").map(k=>({k,dir:1}));render()});
