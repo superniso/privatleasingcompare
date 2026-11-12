@@ -64,13 +64,30 @@ async def read_cards(page):
     return rows
 
 
+WAIT_JS = """km => {
+  const cards = [...document.querySelectorAll('.sf-card-auto')]
+    .filter(c => c.querySelector('.sf-card-auto-financing-details-wrapper'));
+  return cards.length > 0 && cards.every(c => {
+    const it = [...c.querySelectorAll('.sf-card-auto-financing-details-wrapper-item')]
+      .find(i => i.textContent.includes('Km pr. år'));
+    const d = it && it.querySelector('.sf-card-auto-financing-details-wrapper-item-description');
+    return d && d.textContent.trim() === km;
+  });
+}"""
+
+
 async def set_km(page, km):
-    label = f"{km:,}".replace(",", ".") + " km"
+    """Vælger radioknappen annualKm_<km> og venter til alle kort viser den valgte km."""
+    label = f"{km:,}".replace(",", ".")
     try:
-        await page.get_by_text(label, exact=True).first.click(timeout=3000)
-        await page.wait_for_timeout(800)
+        lab = page.locator(f"label[for='annualKm_{km}']")
+        if not await lab.is_visible():  # filteret kan ligge bag en Filter-knap
+            await page.get_by_role("button", name=re.compile("Filter")).first.click(timeout=2000)
+        await lab.click(timeout=3000)
+        await page.wait_for_function(WAIT_JS, arg=label, timeout=8000)
         return True
-    except Exception:
+    except Exception as e:
+        print(f"[vw] kunne ikke vælge {label} km: {str(e).splitlines()[0][:120]}")
         return False
 
 
@@ -79,21 +96,15 @@ async def scrape(page):
     for slug in await discover(page):
         await page.goto(f"{BASE}/app/da/prisliste/{slug}/leasingpriser/", wait_until="networkidle", timeout=60000)
         await page.wait_for_selector(".sf-card-auto-financing-details-wrapper", timeout=30000)
-        try:  # filterpanelet kan være foldet sammen
-            await page.get_by_role("button", name=re.compile("Filter")).first.click(timeout=2000)
-        except Exception:
-            pass
-        applied = 0
-        for km in [None] + KMS:
-            if km and not await set_km(page, km):
+        got_km = set()
+        for km in KMS:
+            if not await set_km(page, km):
                 continue
-            applied += bool(km)
             for r in await read_cards(page):
                 key = (r["model"], r["variant"], r["km"], r["down"], r["months"])
                 if key not in seen:
-                    seen.add(key); out.append(r)
-        if not applied:
-            print(f"[vw] {slug}: km-filteret kunne ikke betjenes – kun standardvisning hentet")
+                    seen.add(key); out.append(r); got_km.add(r["km"])
+        print(f"[vw] {slug}: {len(got_km)} km-trin hentet")
     if not out:
         raise RuntimeError("ingen leasingkort fundet")
     return out
