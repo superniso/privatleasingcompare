@@ -6,7 +6,8 @@ import re
 BASE = "https://www.volkswagen.dk"
 OVERVIEW = BASE + "/app/da/leasingpriser/"
 FALLBACK_SLUGS = ["id-tiguan"]          # tilføj flere modelsider her ved behov
-KMS = [10000, 15000, 20000, 25000, 30000, 40000, 50000, 55000]
+KMS = [10000, 15000, 20000, 25000, 30000, 40000, 50000, 55000]   # bruges hvis siden ikke oplyser dem
+DOWNS = [20000, 45000]
 
 
 def digits(s):
@@ -66,41 +67,49 @@ async def read_cards(page):
     return rows
 
 
+FIELDS = {"annualKm": "Km pr. år", "downPayment": "Førstegangsydelse"}
+GROUPS = {"annualKm": "annualKilometer", "downPayment": "downPayment"}  # name-attribut på radioknapperne
+
 CARD_JS = """() => [...document.querySelectorAll('.sf-card-auto')]
   .filter(c => c.querySelector('.sf-card-auto-financing-details-wrapper'))"""
 
-KM_OF = """c => { const it = [...c.querySelectorAll('.sf-card-auto-financing-details-wrapper-item')]
-  .find(i => i.textContent.includes('Km pr. år'));
+VAL_OF = """(c, field) => { const it = [...c.querySelectorAll('.sf-card-auto-financing-details-wrapper-item')]
+  .find(i => i.textContent.includes(field));
   const d = it && it.querySelector('.sf-card-auto-financing-details-wrapper-item-description');
-  return d ? d.textContent.trim() : '?'; }"""
+  return d ? d.textContent.replace(/\\D/g, '') : '?'; }"""
 
-# Færdig når mindst ét SYNLIGT kort viser den valgte km (skjulte kort ignoreres)
-WAIT_JS = """km => {
-  const km_of = %s;
-  return (%s)().some(c => c.getClientRects().length > 0 && km_of(c) === km);
-}""" % (KM_OF, CARD_JS)
+# Færdig når mindst ét SYNLIGT kort viser den valgte værdi (skjulte kort ignoreres)
+WAIT_JS = """([field, want]) => {
+  const val_of = %s;
+  return (%s)().some(c => c.getClientRects().length > 0 && val_of(c, field) === want);
+}""" % (VAL_OF, CARD_JS)
 
-DIAG_JS = """id => {
-  const km_of = %s, r = document.getElementById(id), cards = (%s)();
+DIAG_JS = """([id, field]) => {
+  const val_of = %s, r = document.getElementById(id), cards = (%s)();
   return {radio_valgt: r ? r.checked : null, kort: cards.length,
           synlige: cards.filter(c => c.getClientRects().length > 0).length,
-          km_vist: [...new Set(cards.map(km_of))]};
-}""" % (KM_OF, CARD_JS)
+          vist: [...new Set(cards.map(c => val_of(c, field)))]};
+}""" % (VAL_OF, CARD_JS)
 
-# Fire måder at skifte km på, prøvet i rækkefølge
+# Fire måder at skifte en radioknap på, prøvet i rækkefølge
 HOWS = [
-    ("js-klik",   """id => document.getElementById(id).click()"""),
-    ("events",    """id => { const el = document.getElementById(id); el.checked = true;
-                    for (const t of ['input', 'change']) el.dispatchEvent(new Event(t, {bubbles: true})); }"""),
-    ("label",     None),
-    ("check",     None),
+    ("js-klik", """id => document.getElementById(id).click()"""),
+    ("events",  """id => { const el = document.getElementById(id); el.checked = true;
+                  for (const t of ['input', 'change']) el.dispatchEvent(new Event(t, {bubbles: true})); }"""),
+    ("label",   None),
+    ("check",   None),
 ]
 
 
-async def set_km(page, km):
-    """Returnerer 'ok', 'mangler' (radioknap findes ikke) eller 'fejl'."""
-    label = f"{km:,}".replace(",", ".")
-    rid = f"annualKm_{km}"
+async def options(page, group, fallback):
+    vals = await page.eval_on_selector_all(
+        f"input[name='{GROUPS[group]}']", "els => els.map(e => parseInt(e.value))")
+    return sorted({v for v in vals if v}) or fallback
+
+
+async def set_radio(page, group, value):
+    """Vælger radioknappen <group>_<value>. Returnerer 'ok', 'mangler' eller 'fejl'."""
+    rid, field, want = f"{group}_{value}", FIELDS[group], str(value)
     if not await page.evaluate("id => !!document.getElementById(id)", rid):
         return "mangler"
     for name, js in HOWS:
@@ -111,13 +120,42 @@ async def set_km(page, km):
                 await page.locator(f"label[for='{rid}']").click(force=True, timeout=3000)
             else:
                 await page.locator(f"#{rid}").check(force=True, timeout=3000)
-            await page.wait_for_function(WAIT_JS, arg=label, timeout=4000)
+            await page.wait_for_function(WAIT_JS, arg=[field, want], timeout=4000)
             await page.wait_for_timeout(600)  # lad resten af kortene nå at opdatere
             return "ok"
         except Exception:
             continue
-    print(f"[vw] kunne ikke skifte til {label} km. Status: {await page.evaluate(DIAG_JS, rid)}")
+    print(f"[vw] kunne ikke vælge {rid}. Status: {await page.evaluate(DIAG_JS, [rid, field])}")
     return "fejl"
+
+
+async def scrape_model(page, seen, out):
+    """Henter alle kombinationer af førstegangsydelse og km på den aktuelle modelside."""
+    combos = set()
+
+    async def collect():
+        for r in await read_cards(page):
+            key = (r["model"], r["variant"], r["km"], r["down"], r["months"])
+            if key not in seen:
+                seen.add(key); out.append(r)
+            combos.add((digits(r["down"]), digits(r["km"])))
+
+    await collect()  # standardvisning først
+    downs = await options(page, "downPayment", DOWNS)
+    kms = await options(page, "annualKm", KMS)
+    worked = False
+    for d in downs:
+        res = await set_radio(page, "downPayment", d)
+        if res == "fejl" and not worked:
+            break  # mekanismen virker ikke på denne side – spar tid
+        if res != "ok":
+            continue
+        worked = True
+        for k in kms:
+            res = await set_radio(page, "annualKm", k)
+            if res == "ok":
+                await collect()
+    return downs, kms, combos
 
 
 async def scrape(page):
@@ -125,25 +163,10 @@ async def scrape(page):
     for slug in await discover(page):
         await page.goto(f"{BASE}/app/da/prisliste/{slug}/leasingpriser/", wait_until="networkidle", timeout=60000)
         await page.wait_for_selector(".sf-card-auto-financing-details-wrapper", timeout=30000)
-        got_km = set()
-
-        async def collect():
-            for r in await read_cards(page):
-                key = (r["model"], r["variant"], r["km"], r["down"], r["months"])
-                if key not in seen:
-                    seen.add(key); out.append(r); got_km.add(r["km"])
-
-        await collect()  # standardvisning først
-        worked = False
-        for km in KMS:
-            if f"{km:,}".replace(",", ".") in got_km:
-                continue
-            res = await set_km(page, km)
-            if res == "ok":
-                worked = True; await collect()
-            elif res == "fejl" and not worked:
-                break  # mekanismen virker ikke på denne side – spar tid
-        print(f"[vw] {slug}: {len(got_km)} km-trin hentet")
+        before = len(out)
+        downs, kms, combos = await scrape_model(page, seen, out)
+        print(f"[vw] {slug}: {len(out) - before} tilbud, {len(combos)} af {len(downs) * len(kms)} kombinationer "
+              f"(udbetaling {downs}, km {kms})")
     if not out:
         raise RuntimeError("ingen leasingkort fundet")
     return out
