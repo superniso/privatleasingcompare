@@ -77,17 +77,20 @@ WAIT_JS = """km => {
 
 
 async def set_km(page, km):
-    """Vælger radioknappen annualKm_<km> og venter til alle kort viser den valgte km."""
+    """Vælger radioknappen annualKm_<km> direkte i siden (virker også hvis noget ligger oven på den)
+    og venter til alle kort viser den valgte km."""
     label = f"{km:,}".replace(",", ".")
     try:
-        lab = page.locator(f"label[for='annualKm_{km}']")
-        if not await lab.is_visible():  # filteret kan ligge bag en Filter-knap
-            await page.get_by_role("button", name=re.compile("Filter")).first.click(timeout=2000)
-        await lab.click(timeout=3000)
+        found = await page.evaluate(
+            """id => { const el = document.getElementById(id); if (!el) return false; el.click(); return true; }""",
+            f"annualKm_{km}")
+        if not found:
+            print(f"[vw] radioknap annualKm_{km} findes ikke på siden")
+            return False
         await page.wait_for_function(WAIT_JS, arg=label, timeout=8000)
         return True
     except Exception as e:
-        print(f"[vw] kunne ikke vælge {label} km: {str(e).splitlines()[0][:120]}")
+        print(f"[vw] valgte {label} km, men kortene opdaterede ikke: {str(e).splitlines()[0][:100]}")
         return False
 
 
@@ -97,13 +100,17 @@ async def scrape(page):
         await page.goto(f"{BASE}/app/da/prisliste/{slug}/leasingpriser/", wait_until="networkidle", timeout=60000)
         await page.wait_for_selector(".sf-card-auto-financing-details-wrapper", timeout=30000)
         got_km = set()
-        for km in KMS:
-            if not await set_km(page, km):
-                continue
+
+        async def collect():
             for r in await read_cards(page):
                 key = (r["model"], r["variant"], r["km"], r["down"], r["months"])
                 if key not in seen:
                     seen.add(key); out.append(r); got_km.add(r["km"])
+
+        await collect()  # standardvisning først
+        for km in KMS:
+            if await set_km(page, km):
+                await collect()
         print(f"[vw] {slug}: {len(got_km)} km-trin hentet")
     if not out:
         raise RuntimeError("ingen leasingkort fundet")
