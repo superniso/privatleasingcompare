@@ -106,7 +106,7 @@ async def main():
                 offers += got
                 status[b["id"]] = {"ok": True, "count": len(got)}
             except Exception as e:  # behold gårsdagens data for mærker der fejler
-                offers += [o for o in old["offers"] if o["brand_id"] == b["id"]]
+                offers += [{**o, "stale": True} for o in old["offers"] if o["brand_id"] == b["id"]]
                 status[b["id"]] = {"ok": False, "error": str(e)[:200]}
                 print(f"[{b['id']}] {e}", file=sys.stderr)
         await browser.close()
@@ -123,13 +123,21 @@ async def main():
     (DATA / "offers.json").write_text(json.dumps({
         "updated": dt.datetime.now(dt.timezone.utc).isoformat(timespec="minutes"),
         "status": status, "offers": offers}, ensure_ascii=False, indent=1))
+    # Prishistorik: én post pr. bil/konfiguration. En ny pris tilføjes, den gamle bliver stående.
     hist_path = DATA / "history.json"
     hist = json.loads(hist_path.read_text()) if hist_path.exists() else {}
+    today = dt.date.today().isoformat()
     for o in offers:
-        h = hist.setdefault(o["id"], [])
-        if not h or h[-1][1] != o["monthly"]:
-            h.append([dt.date.today().isoformat(), o["monthly"]])
-    hist_path.write_text(json.dumps(hist))
+        if o.get("stale"):
+            continue
+        h = hist.get(o["id"])
+        h = {"prices": h} if isinstance(h, list) else (h or {"prices": []})  # migrér gammelt format
+        h.update({k: o[k] for k in ("brand", "brand_id", "model", "variant", "km", "down", "months", "new_price", "link")})
+        h["last_seen"] = today
+        if not h["prices"] or h["prices"][-1][1] != o["monthly"]:
+            h["prices"].append([today, o["monthly"], o["total"]])  # [dato, pr. md., samlet]
+        hist[o["id"]] = h
+    hist_path.write_text(json.dumps(hist, ensure_ascii=False))
     if changes:
         send_mail(changes)
     print(f"{len(offers)} tilbud, {len(changes)} prisændringer")
