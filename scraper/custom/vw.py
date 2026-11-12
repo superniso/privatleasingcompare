@@ -28,6 +28,8 @@ async def discover(page):
 async def read_cards(page):
     rows = []
     for card in await page.query_selector_all(".sf-card-auto"):
+        if not await card.is_visible():  # filtrerede/skjulte kort giver forkert tekst
+            continue
         title = await card.query_selector(".sf-card-auto-title-item")
         desc = await card.query_selector(".sf-card-auto-description-item")
         box = await card.query_selector("input[id^='insuranceCheckbox_']")
@@ -64,34 +66,58 @@ async def read_cards(page):
     return rows
 
 
+CARD_JS = """() => [...document.querySelectorAll('.sf-card-auto')]
+  .filter(c => c.querySelector('.sf-card-auto-financing-details-wrapper'))"""
+
+KM_OF = """c => { const it = [...c.querySelectorAll('.sf-card-auto-financing-details-wrapper-item')]
+  .find(i => i.textContent.includes('Km pr. år'));
+  const d = it && it.querySelector('.sf-card-auto-financing-details-wrapper-item-description');
+  return d ? d.textContent.trim() : '?'; }"""
+
+# Færdig når mindst ét SYNLIGT kort viser den valgte km (skjulte kort ignoreres)
 WAIT_JS = """km => {
-  const cards = [...document.querySelectorAll('.sf-card-auto')]
-    .filter(c => c.querySelector('.sf-card-auto-financing-details-wrapper'));
-  return cards.length > 0 && cards.every(c => {
-    const it = [...c.querySelectorAll('.sf-card-auto-financing-details-wrapper-item')]
-      .find(i => i.textContent.includes('Km pr. år'));
-    const d = it && it.querySelector('.sf-card-auto-financing-details-wrapper-item-description');
-    return d && d.textContent.trim() === km;
-  });
-}"""
+  const km_of = %s;
+  return (%s)().some(c => c.getClientRects().length > 0 && km_of(c) === km);
+}""" % (KM_OF, CARD_JS)
+
+DIAG_JS = """id => {
+  const km_of = %s, r = document.getElementById(id), cards = (%s)();
+  return {radio_valgt: r ? r.checked : null, kort: cards.length,
+          synlige: cards.filter(c => c.getClientRects().length > 0).length,
+          km_vist: [...new Set(cards.map(km_of))]};
+}""" % (KM_OF, CARD_JS)
+
+# Fire måder at skifte km på, prøvet i rækkefølge
+HOWS = [
+    ("js-klik",   """id => document.getElementById(id).click()"""),
+    ("events",    """id => { const el = document.getElementById(id); el.checked = true;
+                    for (const t of ['input', 'change']) el.dispatchEvent(new Event(t, {bubbles: true})); }"""),
+    ("label",     None),
+    ("check",     None),
+]
 
 
 async def set_km(page, km):
-    """Vælger radioknappen annualKm_<km> direkte i siden (virker også hvis noget ligger oven på den)
-    og venter til alle kort viser den valgte km."""
+    """Returnerer 'ok', 'mangler' (radioknap findes ikke) eller 'fejl'."""
     label = f"{km:,}".replace(",", ".")
-    try:
-        found = await page.evaluate(
-            """id => { const el = document.getElementById(id); if (!el) return false; el.click(); return true; }""",
-            f"annualKm_{km}")
-        if not found:
-            print(f"[vw] radioknap annualKm_{km} findes ikke på siden")
-            return False
-        await page.wait_for_function(WAIT_JS, arg=label, timeout=8000)
-        return True
-    except Exception as e:
-        print(f"[vw] valgte {label} km, men kortene opdaterede ikke: {str(e).splitlines()[0][:100]}")
-        return False
+    rid = f"annualKm_{km}"
+    if not await page.evaluate("id => !!document.getElementById(id)", rid):
+        return "mangler"
+    for name, js in HOWS:
+        try:
+            if js:
+                await page.evaluate(js, rid)
+            elif name == "label":
+                await page.locator(f"label[for='{rid}']").click(force=True, timeout=3000)
+            else:
+                await page.locator(f"#{rid}").check(force=True, timeout=3000)
+            await page.wait_for_function(WAIT_JS, arg=label, timeout=4000)
+            await page.wait_for_timeout(600)  # lad resten af kortene nå at opdatere
+            return "ok"
+        except Exception:
+            continue
+    print(f"[vw] kunne ikke skifte til {label} km. Status: {await page.evaluate(DIAG_JS, rid)}")
+    return "fejl"
 
 
 async def scrape(page):
@@ -108,9 +134,15 @@ async def scrape(page):
                     seen.add(key); out.append(r); got_km.add(r["km"])
 
         await collect()  # standardvisning først
+        worked = False
         for km in KMS:
-            if await set_km(page, km):
-                await collect()
+            if f"{km:,}".replace(",", ".") in got_km:
+                continue
+            res = await set_km(page, km)
+            if res == "ok":
+                worked = True; await collect()
+            elif res == "fejl" and not worked:
+                break  # mekanismen virker ikke på denne side – spar tid
         print(f"[vw] {slug}: {len(got_km)} km-trin hentet")
     if not out:
         raise RuntimeError("ingen leasingkort fundet")
