@@ -6,6 +6,8 @@ from playwright.async_api import async_playwright
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 DATA = ROOT / "site" / "data"
+NORM_BELOW = 36        # aftaler kortere end dette (fx 12 mdr.) omregnes
+NORM_TERMS = (36, 48)  # ...til gennemsnit af disse løbetider
 GOOD_RATIO = float(os.getenv("GOOD_RATIO", "0.50"))  # godt tilbud: samlet tilbagebetaling < 50 % af nypris
 
 
@@ -61,8 +63,17 @@ def build(b, raw, cfg, new_prices):
                      or new_prices.get(f"{b['id']}|{model}"))
         if not model or not monthly:
             continue
-        total = down + monthly * months + (num(r.get("fee")) or 0)  # fee = afleveringsgebyr
-        ratio = round(total / new_price, 4) if new_price else None
+        fee = num(r.get("fee")) or 0  # afleveringsgebyr
+        total = down + monthly * months + fee
+        ratio, basis, terms = None, "faktisk", None
+        if new_price:
+            if months < NORM_BELOW:
+                # Korte aftaler ser kunstigt billige ud. Antag samme udbetaling og ydelse over 36 og 48 mdr.
+                # og brug gennemsnittet af de to andele.
+                terms = {str(n): round((down + monthly * n + fee) / new_price, 4) for n in NORM_TERMS}
+                ratio, basis = round(sum(terms.values()) / len(terms), 4), "omregnet"
+            else:
+                ratio = round(total / new_price, 4)
         link = r.get("link") or b["url"]
         if link.startswith("/"):
             link = re.match(r"https?://[^/]+", b["url"]).group(0) + link
@@ -71,6 +82,7 @@ def build(b, raw, cfg, new_prices):
             "brand": b["name"], "brand_id": b["id"], "model": model, "variant": variant,
             "monthly": monthly, "down": down, "months": months, "km": km,
             "total": total, "new_price": new_price, "ratio": ratio,
+            "ratio_basis": basis, "ratio_terms": terms,
             "good": ratio is not None and ratio < GOOD_RATIO, "link": link,
         })
     return out
@@ -119,11 +131,8 @@ async def main():
         o["first_seen"] = prev["first_seen"] if prev else dt.date.today().isoformat()
         o["prev_monthly"] = prev["monthly"] if prev and prev["monthly"] != o["monthly"] else (prev or {}).get("prev_monthly")
 
-    DATA.mkdir(parents=True, exist_ok=True)
-    (DATA / "offers.json").write_text(json.dumps({
-        "updated": dt.datetime.now(dt.timezone.utc).isoformat(timespec="minutes"),
-        "status": status, "offers": offers}, ensure_ascii=False, indent=1))
     # Prishistorik: én post pr. bil/konfiguration. En ny pris tilføjes, den gamle bliver stående.
+    DATA.mkdir(parents=True, exist_ok=True)
     hist_path = DATA / "history.json"
     hist = json.loads(hist_path.read_text()) if hist_path.exists() else {}
     today = dt.date.today().isoformat()
@@ -137,7 +146,12 @@ async def main():
         if not h["prices"] or h["prices"][-1][1] != o["monthly"]:
             h["prices"].append([today, o["monthly"], o["total"]])  # [dato, pr. md., samlet]
         hist[o["id"]] = h
+        o["last_changed"] = h["prices"][-1][0]  # dato for seneste prisændring
     hist_path.write_text(json.dumps(hist, ensure_ascii=False))
+    DATA.mkdir(parents=True, exist_ok=True)
+    (DATA / "offers.json").write_text(json.dumps({
+        "updated": dt.datetime.now(dt.timezone.utc).isoformat(timespec="minutes"),
+        "status": status, "offers": offers}, ensure_ascii=False, indent=1))
     if changes:
         send_mail(changes)
     print(f"{len(offers)} tilbud, {len(changes)} prisændringer")
