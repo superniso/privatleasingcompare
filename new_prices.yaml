@@ -1,3 +1,7 @@
 # Nypris pr. model, bruges når leasingsiden ikke viser den. Nøgle: "<brand-id>|<model>[ <variant>]"
 # Eksempel:
 # "vw|ID.3 Pro": 329995
+
+# VW-kort uden forsikrings-afkrydsning viser ikke nypris. Udfyld "Vejledende pris" fra VW's side, fx:
+# "vw|ID.7 Tourer Style S": 000000
+# (nøglen kan også være model + variant, fx "vw|ID.7 Tourer Style S 286 hk")
