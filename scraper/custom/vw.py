@@ -51,14 +51,13 @@ async def read_cards(page):
         _, new_price, down = (await box.get_attribute("id")).split("_")
         text = await card.inner_text()
         fee = re.search(r"Afleveringsgebyr:\s*([\d.]+)", text)
-        link = await card.query_selector("a.btn-secondary")
         row = {
             "model": (await title.inner_text()).strip(),
             "variant": (await desc.inner_text()).strip() if desc else "",
             "monthly": f[monthly_key], "down": down, "months": f["Leasingperiode"],
             "km": f.get("Km pr. år", ""), "new_price": new_price,
             "fee": fee.group(1) if fee else "0",
-            "link": (await link.get_attribute("href")) if link else None,
+            "link": page.url.split("#")[0],  # modellens privatleasing-side (kilden til priserne)
         }
         calc = digits(row["down"]) + digits(row["monthly"]) * digits(row["months"]) + digits(row["fee"])
         if "Totalomkostninger" in f and calc != digits(f["Totalomkostninger"]):
