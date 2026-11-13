@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-13T08:50+00:00",
+ "updated": "2026-11-13T09:21+00:00",
  "status": {
   "vw": {
    "ok": true,
@@ -23,7 +23,7 @@
   },
   "tesla": {
    "ok": false,
-   "error": "selectors er ikke udfyldt endnu"
+   "error": "Tesla afviser forespørgslen (Access Denied) - sandsynligvis blokering af serverens IP"
   },
   "zeekr": {
    "ok": false,
