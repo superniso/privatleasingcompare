@@ -77,7 +77,7 @@ function children(r){const p=r.prices,out=[];
 function parent(r){const ex=r.n>0,o=open.has(r.id);
   return `<tr class="parent${ex?" exp":""}" data-id="${r.id}" ${ex?`tabindex="0" aria-expanded="${o}"`:""}>
     <td><span class="chev">${ex?(o?"▾":"▸"):""}</span>${r.brand}</td>
-    <td>${r.link?`<a href="${r.link}" target="_blank" rel="noopener">${r.name}</a>`:r.name}<span class="sm">Nypris ${kr(r.new_price)} · ${r.months} mdr.</span></td>
+    <td>${r.link?`<a href="${r.link}" target="_blank" rel="noopener" title="Åbn privatleasing-siden hos forhandleren">${r.name} ↗</a>`:r.name}<span class="sm">Nypris ${kr(r.new_price)} · ${r.months} mdr.</span></td>
     <td>${kr(r.down)}</td><td>${r.km.toLocaleString("da-DK")}</td><td>${kr(r.first)}</td><td>${kr(r.last)}</td><td>${r.total?kr(r.total):"–"}</td>
     <td>${ex?sgn(r.diff):"–"}</td><td>${r.n}</td>
     <td class="${r.seen<latest?"old":""}">${dato(r.seen)}${r.seen<latest?" (udgået?)":""}</td></tr>${ex&&o?children(r):""}`}
