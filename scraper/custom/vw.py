@@ -48,10 +48,13 @@ async def read_cards(page):
         monthly_key = next((k for k in f if k.startswith("Månedlig ydelse")), None)
         if not monthly_key or "inkl" in monthly_key:
             raise RuntimeError("kortet viser ydelse inkl. forsikring – afkryds forsikring fra før læsning")
-        _, new_price, down = (await box.get_attribute("id")).split("_")
+        _, new_price, down_id = (await box.get_attribute("id")).split("_")
+        shown = digits(f.get("Førstegangsydelse", ""))
+        down = str(shown) if shown else down_id
         text = await card.inner_text()
         fee = re.search(r"Afleveringsgebyr:\s*([\d.]+)", text)
         row = {
+            "down_id": down_id,
             "model": (await title.inner_text()).strip(),
             "variant": (await desc.inner_text()).strip() if desc else "",
             "monthly": f[monthly_key], "down": down, "months": f["Leasingperiode"],
@@ -128,15 +131,27 @@ async def set_radio(page, group, value):
     return "fejl"
 
 
+def kr(n):
+    return f"{int(n):,}".replace(",", ".") + " kr."
+
+
 async def scrape_model(page, seen, out):
     """Henter alle kombinationer af førstegangsydelse og km på den aktuelle modelside."""
-    combos = set()
+    combos, snaps = set(), []
+    bases = {k[:5] for k in seen}
 
     async def collect():
         for r in await read_cards(page):
-            key = (r["model"], r["variant"], r["km"], r["down"], r["months"])
-            if key not in seen:
-                seen.add(key); out.append(r)
+            base = (r["model"], r["variant"], r["km"], r["down"], r["months"])
+            k2 = base + (r["new_price"],)
+            if k2 in seen:
+                out[seen[k2]] = r  # samme kort læst igen: nyeste aflæsning vinder
+            else:
+                if base in bases:  # andet kort med samme navn (fx anden pris): behold begge
+                    print(f"[vw] to kort med samme navn: {r['model']} {r['variant']} ({kr(r['new_price'])})")
+                    r = {**r, "variant": f"{r['variant']} ({kr(r['new_price'])})"}
+                bases.add(base)
+                seen[k2] = len(out); out.append(r)
             combos.add((digits(r["down"]), digits(r["km"])))
 
     await collect()  # standardvisning først
@@ -145,20 +160,26 @@ async def scrape_model(page, seen, out):
     worked = False
     for d in downs:
         res = await set_radio(page, "downPayment", d)
+        if res == "mangler":
+            print(f"[vw] radioknappen downPayment_{d} findes ikke"); continue
         if res == "fejl" and not worked:
-            break  # mekanismen virker ikke på denne side – spar tid
+            break  # mekanismen virker ikke på denne side - spar tid
         if res != "ok":
             continue
         worked = True
+        snaps.append((d, [(r["variant"], r["down"], r["down_id"], r["monthly"]) for r in await read_cards(page)]))
         for k in kms:
             res = await set_radio(page, "annualKm", k)
             if res == "ok":
                 await collect()
+    if len(combos) < len(downs) * len(kms):  # ufuldstændig: vis hvad siden faktisk viste
+        for d, rows in snaps:
+            print(f"[vw] ved udbetaling {d} ses {len(rows)} kort (variant, vist, id, ydelse): {rows}")
     return downs, kms, combos
 
 
 async def scrape(page):
-    seen, out = set(), []
+    seen, out = {}, []
     for slug in await discover(page):
         await page.goto(f"{BASE}/app/da/prisliste/{slug}/leasingpriser/", wait_until="networkidle", timeout=60000)
         await page.wait_for_selector(".sf-card-auto-financing-details-wrapper", timeout=30000)
