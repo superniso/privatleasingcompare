@@ -66,7 +66,10 @@ a:focus-visible,th:focus-visible,select:focus-visible,input:focus-visible{outlin
 <p class="status" id="status"></p>
 </main>
 <script>
-const COLS=[["brand","Mærke"],["model","Model"],["monthly","Pr. mdr. fra"],["down","Udbetaling"],["months","Løbetid mdr."],["km","Km/år"],["total","Samlet"],["new_price","Nypris"],["ratio","Andel af nypris"]];
+const TIP_R="Samlet tilbagebetaling ÷ bilens nypris. Samlet tilbagebetaling = udbetaling (førstegangsydelse) + månedlig ydelse × løbetid + evt. afleveringsgebyr. Under 50 % regnes som et godt tilbud.\n\nAftaler under 36 mdr. (fx 12 mdr.): En kort aftale ser kunstigt billig ud, fordi du kun betaler for få måneder. Derfor omregnes den. Vi antager samme udbetaling og månedlige ydelse, beregner andelen for både 36 og 48 mdr. og bruger gennemsnittet. Tal med * er omregnet. Korte aftaler har ofte en højere ydelse pr. måned, så det er et forsigtigt (højt) estimat.",TIP_C="Dato for seneste prisændring. Er prisen ikke ændret siden første registrering, vises den dato, tilbuddet først blev set.";
+const dato=d=>d?new Date(d).toLocaleDateString("da-DK",{day:"numeric",month:"short",year:"numeric"}):"–";
+const esc=t=>t.replace(/"/g,"&quot;");
+const COLS=[["brand","Mærke"],["model","Model"],["monthly","Pr. mdr. fra"],["down","Udbetaling"],["months","Løbetid mdr."],["km","Km/år"],["total","Samlet"],["new_price","Nypris"],["ratio","Andel af nypris",TIP_R],["last_changed","Sidst ændret",TIP_C]];
 const kr=n=>n==null?"–":n.toLocaleString("da-DK")+" kr.";
 let all=[],stack=[{k:"model",dir:1},{k:"down",dir:1},{k:"km",dir:1}];
 const $=id=>document.getElementById(id);
@@ -74,10 +77,15 @@ const KEY={model:o=>o.model+" "+o.variant};
 const val=(o,k)=>(KEY[k]||(x=>x[k]))(o);
 function cmp(a,b){for(const s of stack){const x=val(a,s.k),y=val(b,s.k);if(x==null&&y==null)continue;if(x==null)return 1;if(y==null)return-1;
   const c=typeof x==="string"?x.localeCompare(y,"da",{numeric:true}):x-y;if(c)return c*s.dir}return 0}
-function head(){$("head").innerHTML=COLS.map(([k,l])=>{const i=stack.findIndex(s=>s.k===k);
+function head(){$("head").innerHTML=COLS.map(([k,l,t])=>{const i=stack.findIndex(s=>s.k===k);
   const arrow=i<0?"":` data-arrow="${stack[i].dir>0?"↑":"↓"}${i?"₂":""}"`;
-  return `<th tabindex="0" data-k="${k}" ${i<0?"":`aria-sort="${stack[i].dir>0?"ascending":"descending"}"`}${arrow}>${l}</th>`}).join("")}
+  return `<th tabindex="0" data-k="${k}" ${t?`title="${esc(t)}"`:""} ${i<0?"":`aria-sort="${stack[i].dir>0?"ascending":"descending"}"`}${arrow}>${l}</th>`}).join("")}
 function fill(id,vals,fmt){$(id).insertAdjacentHTML("beforeend",[...new Set(vals)].sort((a,b)=>a-b).map(v=>`<option value="${v}">${fmt(v)}</option>`).join(""))}
+const pct=x=>(x*100).toFixed(1).replace(".",",")+" %";
+function pill(o){if(o.ratio==null)return `<span class="pill">mangler nypris</span>`;
+  if(o.ratio_basis!=="omregnet")return `<span class="pill">${pct(o.ratio)}</span>`;
+  const t=o.ratio_terms||{};
+  return `<span class="pill" title="${esc(`Omregnet fra ${o.months} mdr.: andel ved 36 mdr. = ${pct(t["36"])}, ved 48 mdr. = ${pct(t["48"])}. Gennemsnit = ${pct(o.ratio)}. Uden omregning ville den samlede tilbagebetaling over ${o.months} mdr. udgøre ${pct(o.total/o.new_price)} af nyprisen.`)}">${pct(o.ratio)}*</span>`}
 function render(){
   const b=$("brand").value,q=$("q").value.toLowerCase(),g=$("onlyGood").checked,km=$("km").value,dn=$("down").value;
   const r=all.filter(o=>(!b||o.brand_id===b)&&(!g||o.good)&&(!km||o.km==km)&&(dn===""||o.down==dn)&&(o.model+" "+o.variant).toLowerCase().includes(q)).sort(cmp);
@@ -86,10 +94,10 @@ function render(){
   $("body").innerHTML=r.length?r.map(o=>{
     const d=o.prev_monthly!=null?o.monthly-o.prev_monthly:0;
     const ch=d?` <small class="${d>0?"up":"down"}">${d>0?"▲":"▼"} ${Math.abs(d).toLocaleString("da-DK")}</small>`:"";
-    return `<tr class="${o.good?"good":""}"><td>${o.brand}</td><td><a href="${o.link}" target="_blank" rel="noopener">${o.model}</a> ${o.variant||""}</td>
+    return `<tr class="${o.good?"good":""}"><td>${o.brand}</td><td><a href="${o.link}" target="_blank" rel="noopener" title="Åbn privatleasing-siden hos forhandleren">${o.model} ↗</a> ${o.variant||""}</td>
     <td>${kr(o.monthly)}${ch}</td><td>${kr(o.down)}</td><td>${o.months}</td><td>${o.km.toLocaleString("da-DK")}</td>
-    <td>${kr(o.total)}</td><td>${kr(o.new_price)}</td><td><span class="pill">${o.ratio==null?"mangler nypris":(o.ratio*100).toFixed(1).replace(".",",")+" %"}</span></td></tr>`}).join("")
-  :`<tr><td colspan="9" class="empty">Ingen tilbud matcher dine filtre.</td></tr>`;
+    <td>${kr(o.total)}</td><td>${kr(o.new_price)}</td><td>${pill(o)}</td><td>${dato(o.last_changed||o.first_seen)}</td></tr>`}).join("")
+  :`<tr><td colspan="10" class="empty">Ingen tilbud matcher dine filtre.</td></tr>`;
 }
 $("head").addEventListener("click",e=>{const k=e.target.dataset.k;if(!k)return;
   stack=stack[0].k===k?[{k,dir:-stack[0].dir},...stack.slice(1)]:[{k,dir:1},...stack.filter(s=>s.k!==k)].slice(0,3);render()});
