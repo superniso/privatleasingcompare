@@ -37,6 +37,37 @@ a:focus-visible,th:focus-visible,select:focus-visible,input:focus-visible{outlin
 .status{margin-top:20px;color:var(--mute);font-size:13px}
 .status b{color:var(--bad)}
 .empty{padding:40px 20px;text-align:center;color:var(--mute)}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--surface)}
+.seg button{font:inherit;color:var(--mute);background:none;border:0;padding:8px 14px;cursor:pointer}
+.seg button[aria-pressed=true]{background:var(--ink);color:var(--bg);font-weight:700}
+.seg button:focus-visible{outline:2px solid var(--good);outline-offset:-2px}
+.tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:20px}
+.tiles[hidden]{display:none}
+.card{position:relative;display:flex;flex-direction:column;background:var(--surface);border:1px solid var(--line);border-radius:18px;overflow:hidden;box-shadow:0 1px 2px #0002;transition:transform .15s,box-shadow .15s}
+.card:hover{transform:translateY(-4px);box-shadow:0 10px 24px #0003}
+.card.good{border-color:var(--good);box-shadow:0 0 0 2px var(--good)}
+.card header{padding:14px 16px 16px;color:#fff;background:linear-gradient(135deg,hsl(var(--h) 55% 24%),hsl(var(--h) 60% 38%))}
+.card .brand{font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;opacity:.85}
+.card .rib{float:right;font-size:11px;font-weight:800;background:#ffd45c;color:#3a2a00;border-radius:99px;padding:2px 9px}
+.card h3{margin:6px 0 0;font-size:21px;line-height:1.15;font-weight:800}
+.card header p{margin:2px 0 0;font-size:13px;opacity:.9}
+.price{padding:14px 16px 6px;display:flex;align-items:baseline;gap:6px}
+.price b{font-size:34px;font-weight:800;letter-spacing:-.02em;line-height:1}
+.price span{color:var(--mute);font-size:13px}
+.card dl{margin:0;padding:6px 16px}
+.card dl div{display:flex;justify-content:space-between;gap:8px;padding:6px 0;border-bottom:1px dashed var(--line);font-size:14px}
+.card dl div:last-child{border:0}
+.card dt{color:var(--mute)}.card dd{margin:0;font-weight:700}
+.meter{padding:6px 16px 12px}
+.mh{display:flex;justify-content:space-between;align-items:center;font-size:13px;color:var(--mute);margin-bottom:8px}
+.bar2{position:relative;height:8px;border-radius:99px;background:var(--line)}
+.bar2 i{display:block;height:100%;border-radius:99px;background:var(--mute)}
+.card.good .bar2 i{background:var(--good)}
+.bar2 u{position:absolute;left:50%;top:-3px;bottom:-3px;width:2px;background:var(--ink);opacity:.6}
+.card footer{margin-top:auto;display:flex;justify-content:space-between;align-items:center;gap:8px;padding:12px 16px;border-top:1px solid var(--line);font-size:12px;color:var(--mute)}
+.btn{font-weight:700;font-size:13px;color:var(--bg);background:var(--ink);padding:7px 12px;border-radius:8px;text-decoration:none}
+.btn:hover{opacity:.85}
+@media (prefers-reduced-motion:reduce){.card,.card:hover{transition:none;transform:none}}
 </style>
 </head>
 <body>
@@ -59,9 +90,11 @@ a:focus-visible,th:focus-visible,select:focus-visible,input:focus-visible{outlin
     <option value="km,monthly">Sortér: Km pr. år (lavest først)</option>
   </select>
   <label class="chk"><input id="onlyGood" type="checkbox"> Kun gode tilbud</label>
+  <div class="seg" role="group" aria-label="Visning"><button type="button" data-v="tiles">Tiles</button><button type="button" data-v="list">Liste</button></div>
   <span class="stat" id="stat"></span>
 </div>
-<div class="wrap"><table>
+<div class="tiles" id="tiles" hidden></div>
+<div class="wrap" id="lst" hidden><table>
 <thead><tr id="head"></tr></thead><tbody id="body"></tbody></table></div>
 <p class="status" id="status"></p>
 </main>
@@ -86,11 +119,24 @@ function pill(o){if(o.ratio==null)return `<span class="pill">mangler nypris</spa
   if(o.ratio_basis!=="omregnet")return `<span class="pill">${pct(o.ratio)}</span>`;
   const t=o.ratio_terms||{};
   return `<span class="pill" title="${esc(`Omregnet fra ${o.months} mdr.: andel ved 36 mdr. = ${pct(t["36"])}, ved 48 mdr. = ${pct(t["48"])}. Gennemsnit = ${pct(o.ratio)}. Uden omregning ville den samlede tilbagebetaling over ${o.months} mdr. udgøre ${pct(o.total/o.new_price)} af nyprisen.`)}">${pct(o.ratio)}*</span>`}
+let view=(()=>{try{return localStorage.getItem("view")}catch(e){return null}})()||"tiles";
+const hue=o=>[...o.brand_id].reduce((a,c)=>(a+c.charCodeAt(0)*37)%360,0);
+const chg=o=>{const d=o.prev_monthly!=null?o.monthly-o.prev_monthly:0;return d?`<small class="${d>0?"up":"down"}">${d>0?"▲":"▼"} ${Math.abs(d).toLocaleString("da-DK")}</small>`:""};
+function tile(o){const w=o.ratio==null?0:Math.min(o.ratio,1)*100;
+  return `<article class="card${o.good?" good":""}" style="--h:${hue(o)}">
+  <header><span class="brand">${o.brand}</span>${o.good?`<span class="rib">★ Top tilbud</span>`:""}<h3>${o.model}</h3><p>${o.variant||"&nbsp;"}</p></header>
+  <div class="price"><b>${o.monthly.toLocaleString("da-DK")}</b><span>kr./md.</span>${chg(o)}</div>
+  <dl><div><dt>Udbetaling</dt><dd>${kr(o.down)}</dd></div><div><dt>Km pr. år</dt><dd>${o.km.toLocaleString("da-DK")}</dd></div><div><dt>Løbetid</dt><dd>${o.months} mdr.</dd></div><div><dt>Samlet</dt><dd>${kr(o.total)}</dd></div><div><dt>Nypris</dt><dd>${kr(o.new_price)}</dd></div></dl>
+  <div class="meter"><div class="mh"><span title="${esc(TIP_R)}">Andel af nypris</span>${pill(o)}</div><div class="bar2"><i style="width:${w}%"></i><u></u></div></div>
+  <footer><span>Ændret ${dato(o.last_changed||o.first_seen)}</span><a class="btn" href="${o.link}" target="_blank" rel="noopener">Se tilbud ↗</a></footer></article>`}
 function render(){
   const b=$("brand").value,q=$("q").value.toLowerCase(),g=$("onlyGood").checked,km=$("km").value,dn=$("down").value;
   const r=all.filter(o=>(!b||o.brand_id===b)&&(!g||o.good)&&(!km||o.km==km)&&(dn===""||o.down==dn)&&(o.model+" "+o.variant).toLowerCase().includes(q)).sort(cmp);
   head();
   $("stat").textContent=`${r.length} tilbud · ${r.filter(o=>o.good).length} gode`;
+  document.querySelectorAll(".seg button").forEach(x=>x.setAttribute("aria-pressed",x.dataset.v===view));
+  const t=view==="tiles";$("tiles").hidden=!t;$("lst").hidden=t;
+  if(t){$("tiles").innerHTML=r.length?r.map(tile).join(""):`<p class="empty">Ingen tilbud matcher dine filtre.</p>`;return}
   $("body").innerHTML=r.length?r.map(o=>{
     const d=o.prev_monthly!=null?o.monthly-o.prev_monthly:0;
     const ch=d?` <small class="${d>0?"up":"down"}">${d>0?"▲":"▼"} ${Math.abs(d).toLocaleString("da-DK")}</small>`:"";
@@ -99,6 +145,7 @@ function render(){
     <td>${kr(o.total)}</td><td>${kr(o.new_price)}</td><td>${pill(o)}</td><td>${dato(o.last_changed||o.first_seen)}</td></tr>`}).join("")
   :`<tr><td colspan="10" class="empty">Ingen tilbud matcher dine filtre.</td></tr>`;
 }
+document.querySelector(".seg").addEventListener("click",e=>{const v=e.target.dataset.v;if(!v)return;view=v;try{localStorage.setItem("view",v)}catch(err){}render()});
 $("head").addEventListener("click",e=>{const k=e.target.dataset.k;if(!k)return;
   stack=stack[0].k===k?[{k,dir:-stack[0].dir},...stack.slice(1)]:[{k,dir:1},...stack.filter(s=>s.k!==k)].slice(0,3);render()});
 $("head").addEventListener("keydown",e=>{if(e.key==="Enter")e.target.click()});
