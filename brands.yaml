@@ -16,13 +16,13 @@ defaults: &fields
 default_months: 36
 default_km: 15000
 brands:
-  # vw bruger scraper/custom/vw.py (selectors herunder ignoreres)
+  # vw og tesla bruger egne adaptere i scraper/custom/ (selectors herunder ignoreres)
   - {id: vw,       name: Volkswagen, url: "https://www.volkswagen.dk/app/da/leasingpriser/", card: "TODO", fields: *fields}
   - {id: skoda,    name: Škoda,      url: "https://www.skoda.dk/",                             card: "TODO", fields: *fields}
   - {id: audi,     name: Audi,       url: "https://www.audi.dk/",                              card: "TODO", fields: *fields}
   - {id: hyundai,  name: Hyundai,    url: "https://www.hyundai.com/dk/",                       card: "TODO", fields: *fields}
   - {id: kia,      name: Kia,        url: "https://www.kia.com/dk/",                           card: "TODO", fields: *fields}
-  - {id: tesla,    name: Tesla,      url: "https://www.tesla.com/da_dk",                       card: "TODO", fields: *fields}
+  - {id: tesla,    name: Tesla,      url: "https://www.tesla.com/da_dk/modely/design",                       card: "TODO", fields: *fields}
   - {id: zeekr,    name: Zeekr,      url: "https://www.zeekr.dk/",                             card: "TODO", fields: *fields}
   - {id: bmw,      name: BMW,        url: "https://www.bmw.dk/",                               card: "TODO", fields: *fields}
   - {id: mercedes, name: Mercedes,   url: "https://www.mercedes-benz.dk/",                     card: "TODO", fields: *fields}
