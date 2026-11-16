@@ -51,7 +51,7 @@ a{color:inherit}
   <select id="km" aria-label="Km pr. år"><option value="">Alle km pr. år</option></select>
   <select id="down" aria-label="Førstegangsydelse"><option value="">Alle førstegangsydelser</option></select>
   <input id="q" type="search" placeholder="Søg model" aria-label="Søg model">
-  <label class="chk"><input id="chg" type="checkbox"> Kun biler med prisændringer</label>
+  <label class="chk" title="Kun biler, hvor den månedlige ydelse har ændret sig (ændringer i nypris tæller ikke med)"><input id="chg" type="checkbox"> Kun biler med prisændringer</label>
   <button class="lnk" id="all" type="button">Fold alle ud</button>
   <span class="stat" id="stat"></span>
 </div>
@@ -85,8 +85,8 @@ function parent(r){const ex=r.n>0,o=open.has(r.id);
     <td class="${r.seen<latest?"old":""}">${dato(r.seen)}${r.seen<latest?" (udgået?)":""}</td></tr>${ex&&o?children(r):""}`}
 function draw(){
   const b=$("brand").value,q=$("q").value.toLowerCase(),km=$("km").value,dn=$("down").value,c=$("chg").checked;
-  shown=rows.filter(x=>(!b||x.brand_id===b)&&(!km||x.km==km)&&(dn===""||x.down==dn)&&(!c||x.n>0)&&x.name.toLowerCase().includes(q)).sort(cmp);
-  head();$("stat").textContent=`${shown.length} biler · ${shown.reduce((a,x)=>a+x.n,0)} prisændringer`;
+  shown=rows.filter(x=>(!b||x.brand_id===b)&&(!km||x.km==km)&&(dn===""||x.down==dn)&&(!c||x.nm>0)&&x.name.toLowerCase().includes(q)).sort(cmp);
+  head();$("stat").textContent=`${shown.length} biler · ${shown.reduce((a,x)=>a+x.nm,0)} prisændringer`;
   const exp=shown.filter(x=>x.n>0);$("all").hidden=!exp.length;$("all").textContent=exp.every(x=>open.has(x.id))?"Fold alle ind":"Fold alle ud";
   $("more").hidden=shown.length<=limit;$("moreinfo").textContent=`Viser ${Math.min(limit,shown.length)} af ${shown.length}`;
   $("body").innerHTML=shown.length?shown.slice(0,limit).map(parent).join(""):`<tr><td colspan="${NC}" class="empty">Ingen biler matcher. Historikken opbygges, efterhånden som scraperen kører.</td></tr>`;
@@ -107,7 +107,7 @@ Promise.all([fetch("data/history.json").then(r=>r.ok?r.json():{}),fetch("data/of
   rows=Object.entries(h).map(([id,v])=>{const hv=Array.isArray(v)?{prices:v}:v,m={...meta[id],...hv},p=hv.prices;if(!m.brand||!p||!p.length)return null;
     const l=p[p.length-1];
     return {id,brand:m.brand,brand_id:m.brand_id,name:(m.model+" "+(m.variant||"")).trim(),down:m.down,km:m.km,months:m.months,new_price:m.new_price,link:m.link,prices:p,
-      first:p[0][1],last:l[1],total:l[2]||null,diff:l[1]-p[0][1],n:p.length-1,seen:m.last_seen||l[0]}}).filter(Boolean);
+      first:p[0][1],last:l[1],total:l[2]||null,diff:l[1]-p[0][1],n:p.length-1,nm:p.reduce((a,v,i)=>a+(i&&v[1]!==p[i-1][1]?1:0),0),seen:m.last_seen||l[0]}}).filter(Boolean);
   latest=rows.reduce((a,x)=>x.seen>a?x.seen:a,"");
   const fill=(id,vals,f)=>$(id).insertAdjacentHTML("beforeend",[...new Set(vals)].sort((a,b)=>a-b).map(v=>`<option value="${v}">${f(v)}</option>`).join(""));
   $("brand").insertAdjacentHTML("beforeend",[...new Map(rows.map(x=>[x.brand_id,x.brand]))].sort((a,b)=>a[1].localeCompare(b[1],"da")).map(([i,n])=>`<option value="${i}">${n}</option>`).join(""));
