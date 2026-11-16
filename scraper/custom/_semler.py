@@ -4,6 +4,7 @@ Mærkespecifikke filer (vw.py, audi.py) angiver kun, hvilke sider der skal hente
 import re
 
 TAG = "semler"                   # bruges i loggen, sættes af scrape_site
+LINK_URL = None                  # siden tilbuddene vises på (bruges som link, også hvis kortene ligger i en iframe)
 KMS = [10000, 15000, 20000, 25000, 30000, 40000, 50000, 55000]   # bruges hvis siden ikke oplyser dem
 DOWNS = [20000, 45000]
 
@@ -78,7 +79,7 @@ async def read_cards(page, prices=None):
             "monthly": f[monthly_key], "down": down, "months": f["Leasingperiode"],
             "km": f.get("Km pr. år", ""), "new_price": new_price,
             "fee": str(fee),
-            "link": page.url.split("#")[0],  # modellens privatleasing-side (kilden til priserne)
+            "link": (LINK_URL or page.url).split("#")[0],  # modellens privatleasing-side (kilden til priserne)
         }
         calc = digits(row["down"]) + digits(row["monthly"]) * digits(row["months"]) + digits(row["fee"])
         if "Totalomkostninger" in f and calc != digits(f["Totalomkostninger"]):
@@ -200,9 +201,69 @@ async def scrape_model(page, seen, out):
     return downs, kms, combos
 
 
+CARDS = ".sf-card-auto-financing-details-wrapper"
+REJECT = re.compile(r"afvis|kun nødvendige|nødvendige cookies|reject|necessary only|decline", re.I)
+ACCEPT = re.compile(r"accept|accepter|acceptér|tillad alle|allow all", re.I)
+
+
+async def click_consent(page, rx):
+    """Klikker på en knap i samtykkebanneret (også hvis det ligger i en iframe)."""
+    for fr in page.frames:
+        try:
+            await fr.get_by_role("button", name=rx).first.click(timeout=1500)
+            return True
+        except Exception:
+            pass
+    return False
+
+
+async def find_cards_frame(page, timeout_ms):
+    """Finder den side/iframe, hvor leasingkortene ligger. Scroller undervejs, så sent indlæst indhold vises."""
+    waited = 0
+    while waited < timeout_ms:
+        for fr in page.frames:
+            try:
+                if await fr.query_selector(CARDS):
+                    return fr
+            except Exception:
+                pass
+        try:
+            await page.mouse.wheel(0, 1200)
+        except Exception:
+            pass
+        await page.wait_for_timeout(1000)
+        waited += 1000
+    return None
+
+
+async def diagnose_frames(page):
+    info = []
+    for fr in page.frames:
+        try:
+            info.append({"url": fr.url[:90], "kort": await fr.locator(".sf-card-auto").count(),
+                         "radioknapper": await fr.locator("input[type=radio]").count(),
+                         "kort_i_document": await fr.evaluate("document.querySelectorAll('.sf-card-auto').length")})
+        except Exception as e:
+            info.append({"url": fr.url[:90], "fejl": str(e)[:60]})
+    print(f"[{TAG}] rammer på siden: {info}")
+    try:
+        btns = [b.strip() for b in await page.locator("button:visible").all_inner_texts() if b.strip()][:25]
+        print(f"[{TAG}] synlige knapper: {btns}")
+    except Exception:
+        pass
+
+
+async def locate_cards(page):
+    await click_consent(page, REJECT)  # først "afvis/kun nødvendige", så vi ikke giver mere samtykke end nødvendigt
+    frame = await find_cards_frame(page, 20000)
+    if not frame and await click_consent(page, ACCEPT):
+        frame = await find_cards_frame(page, 20000)
+    return frame
+
+
 async def scrape_site(page, tag, urls):
     """urls: async funktion der returnerer [(navn, url), ...]."""
-    global TAG
+    global TAG, LINK_URL
     TAG = tag
     seen, out = {}, []
     for name, url in await urls(page):
@@ -210,12 +271,13 @@ async def scrape_site(page, tag, urls):
             await page.goto(url, wait_until="networkidle", timeout=45000)
         except Exception:
             pass  # networkidle kan time ud på sider med løbende sporing; vi venter på kortene i stedet
-        try:
-            await page.wait_for_selector(".sf-card-auto-financing-details-wrapper", timeout=30000)
-        except Exception:
+        frame = await locate_cards(page)
+        if not frame:
+            await diagnose_frames(page)
             raise RuntimeError(f"ingen leasingkort på {url} (sidetitel: {await page.title()!r})")
+        LINK_URL = url
         before = len(out)
-        downs, kms, combos = await scrape_model(page, seen, out)
+        downs, kms, combos = await scrape_model(frame, seen, out)
         missing = sorted({f"{r['model']} {r['variant']}" for r in out[before:] if not r["new_price"]})
         if missing:
             print(f"[{TAG}] {name}: nypris mangler for {missing} - læg dem i new_prices.yaml")
