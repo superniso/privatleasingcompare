@@ -38,6 +38,7 @@ button.lnk{font:inherit;color:inherit;background:none;border:1px solid var(--lin
 a{color:inherit}
 .empty{padding:40px 20px;text-align:center;color:var(--mute)}
 :focus-visible{outline:2px solid var(--good);outline-offset:2px}
+#more{display:flex;gap:12px;align-items:center;justify-content:center;margin:24px 0;color:var(--mute)}
 </style>
 </head>
 <body>
@@ -55,6 +56,7 @@ a{color:inherit}
   <span class="stat" id="stat"></span>
 </div>
 <div class="wrap"><table><thead><tr id="head"></tr></thead><tbody id="body"></tbody></table></div>
+<div id="more" hidden><span id="moreinfo"></span><button class="lnk" type="button" id="moreBtn">Vis flere</button></div>
 <p class="sub" id="note" style="margin-top:16px"></p>
 </main>
 <script>
@@ -77,24 +79,29 @@ function children(r){const p=r.prices,out=[];
 function parent(r){const ex=r.n>0,o=open.has(r.id);
   return `<tr class="parent${ex?" exp":""}" data-id="${r.id}" ${ex?`tabindex="0" aria-expanded="${o}"`:""}>
     <td><span class="chev">${ex?(o?"▾":"▸"):""}</span>${r.brand}</td>
-    <td>${r.link?`<a href="${r.link}" target="_blank" rel="noopener" title="Åbn privatleasing-siden hos forhandleren">${r.name} ↗</a>`:r.name}<span class="sm">Nypris ${kr(r.new_price)} · ${r.months} mdr.</span></td>
+    <td>${r.link?`<a href="${r.link}" target="_blank" rel="noopener" title="Åbn privatleasing-siden hos forhandleren">${r.name} ↗</a>`:r.name}<span class="sm">Nypris fra ${kr(r.new_price)} · ${r.months} mdr.</span></td>
     <td>${kr(r.down)}</td><td>${r.km.toLocaleString("da-DK")}</td><td>${kr(r.first)}</td><td>${kr(r.last)}</td><td>${r.total?kr(r.total):"–"}</td>
     <td>${ex?sgn(r.diff):"–"}</td><td>${r.n}</td>
     <td class="${r.seen<latest?"old":""}">${dato(r.seen)}${r.seen<latest?" (udgået?)":""}</td></tr>${ex&&o?children(r):""}`}
-function render(){
+function draw(){
   const b=$("brand").value,q=$("q").value.toLowerCase(),km=$("km").value,dn=$("down").value,c=$("chg").checked;
   shown=rows.filter(x=>(!b||x.brand_id===b)&&(!km||x.km==km)&&(dn===""||x.down==dn)&&(!c||x.n>0)&&x.name.toLowerCase().includes(q)).sort(cmp);
   head();$("stat").textContent=`${shown.length} biler · ${shown.reduce((a,x)=>a+x.n,0)} prisændringer`;
   const exp=shown.filter(x=>x.n>0);$("all").hidden=!exp.length;$("all").textContent=exp.every(x=>open.has(x.id))?"Fold alle ind":"Fold alle ud";
-  $("body").innerHTML=shown.length?shown.map(parent).join(""):`<tr><td colspan="${NC}" class="empty">Ingen biler matcher. Historikken opbygges, efterhånden som scraperen kører.</td></tr>`;
+  $("more").hidden=shown.length<=limit;$("moreinfo").textContent=`Viser ${Math.min(limit,shown.length)} af ${shown.length}`;
+  $("body").innerHTML=shown.length?shown.slice(0,limit).map(parent).join(""):`<tr><td colspan="${NC}" class="empty">Ingen biler matcher. Historikken opbygges, efterhånden som scraperen kører.</td></tr>`;
 }
+let limit=100;
+function render(){limit=100;draw()}
 $("head").addEventListener("click",e=>{const k=e.target.dataset.k;if(!k)return;
   stack=stack[0].k===k?[{k,dir:-stack[0].dir},...stack.slice(1)]:[{k,dir:1},...stack.filter(s=>s.k!==k)].slice(0,3);render()});
-$("body").addEventListener("click",e=>{const tr=e.target.closest("tr.parent.exp");if(!tr||e.target.closest("a"))return;const id=tr.dataset.id;open.has(id)?open.delete(id):open.add(id);render()});
-$("all").addEventListener("click",()=>{const exp=shown.filter(x=>x.n>0);exp.every(x=>open.has(x.id))?exp.forEach(x=>open.delete(x.id)):exp.forEach(x=>open.add(x.id));render()});
+$("body").addEventListener("click",e=>{const tr=e.target.closest("tr.parent.exp");if(!tr||e.target.closest("a"))return;const id=tr.dataset.id;open.has(id)?open.delete(id):open.add(id);draw()});
+$("all").addEventListener("click",()=>{const exp=shown.filter(x=>x.n>0);exp.every(x=>open.has(x.id))?exp.forEach(x=>open.delete(x.id)):exp.forEach(x=>open.add(x.id));draw()});
 $("body").addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();e.target.click()}});
 $("head").addEventListener("keydown",e=>{if(e.key==="Enter")e.target.click()});
 ["brand","km","down","q","chg"].forEach(i=>$(i).addEventListener("input",render));
+$("moreBtn").addEventListener("click",()=>{limit+=100;draw()});
+if("IntersectionObserver" in window)new IntersectionObserver(es=>{if(es[0].isIntersecting){limit+=100;draw()}},{rootMargin:"600px"}).observe($("more"));
 Promise.all([fetch("data/history.json").then(r=>r.ok?r.json():{}),fetch("data/offers.json").then(r=>r.ok?r.json():{offers:[]})]).then(([h,o])=>{
   const meta=Object.fromEntries((o.offers||[]).map(x=>[x.id,x]));
   rows=Object.entries(h).map(([id,v])=>{const hv=Array.isArray(v)?{prices:v}:v,m={...meta[id],...hv},p=hv.prices;if(!m.brand||!p||!p.length)return null;
@@ -103,7 +110,7 @@ Promise.all([fetch("data/history.json").then(r=>r.ok?r.json():{}),fetch("data/of
       first:p[0][1],last:l[1],total:l[2]||null,diff:l[1]-p[0][1],n:p.length-1,seen:m.last_seen||l[0]}}).filter(Boolean);
   latest=rows.reduce((a,x)=>x.seen>a?x.seen:a,"");
   const fill=(id,vals,f)=>$(id).insertAdjacentHTML("beforeend",[...new Set(vals)].sort((a,b)=>a-b).map(v=>`<option value="${v}">${f(v)}</option>`).join(""));
-  $("brand").insertAdjacentHTML("beforeend",[...new Map(rows.map(x=>[x.brand_id,x.brand]))].map(([i,n])=>`<option value="${i}">${n}</option>`).join(""));
+  $("brand").insertAdjacentHTML("beforeend",[...new Map(rows.map(x=>[x.brand_id,x.brand]))].sort((a,b)=>a[1].localeCompare(b[1],"da")).map(([i,n])=>`<option value="${i}">${n}</option>`).join(""));
   fill("km",rows.map(x=>x.km),v=>v.toLocaleString("da-DK")+" km");fill("down",rows.map(x=>x.down),kr);
   $("note").textContent=o.updated?`Data senest opdateret ${new Date(o.updated).toLocaleString("da-DK")}.`:"";render();
 }).catch(()=>{$("body").innerHTML=`<tr><td colspan="${NC}" class="empty">Kunne ikke indlæse data/history.json (åbn siden via en webserver, ikke som fil).</td></tr>`});
