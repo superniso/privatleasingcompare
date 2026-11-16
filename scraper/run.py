@@ -141,12 +141,25 @@ async def main():
             continue
         h = hist.get(o["id"])
         h = {"prices": h} if isinstance(h, list) else (h or {"prices": []})  # migrér gammelt format
-        h.update({k: o[k] for k in ("brand", "brand_id", "model", "variant", "km", "down", "months", "new_price", "link")})
+        h.update({k: o[k] for k in ("brand", "brand_id", "model", "variant", "km", "down", "months", "link")})
+        np = o.get("new_price")
+        if np:
+            h["new_price"] = np
         h["last_seen"] = today
-        if not h["prices"] or h["prices"][-1][1] != o["monthly"]:
-            h["prices"].append([today, o["monthly"], o["total"]])  # [dato, pr. md., samlet]
+        last = h["prices"][-1] if h["prices"] else None
+        # Ny post ved ændret månedlig ydelse eller ændret nypris: [dato, pr. md., samlet, nypris]
+        if last is None or last[1] != o["monthly"] or (np and len(last) > 3 and last[3] and last[3] != np):
+            h["prices"].append([today, o["monthly"], o["total"], np])
+        elif np and (len(last) < 4 or not last[3]):  # ældre poster uden nypris: udfyld seneste post
+            while len(last) < 3:
+                last.append(None)
+            last[3:] = [np]
         hist[o["id"]] = h
-        o["last_changed"] = h["prices"][-1][0]  # dato for seneste prisændring
+        lc = h["prices"][0][0]  # dato for seneste ændring af den månedlige ydelse
+        for a, b in zip(h["prices"], h["prices"][1:]):
+            if a[1] != b[1]:
+                lc = b[0]
+        o["last_changed"] = lc
     hist_path.write_text(json.dumps(hist, ensure_ascii=False))
     DATA.mkdir(parents=True, exist_ok=True)
     (DATA / "offers.json").write_text(json.dumps({
