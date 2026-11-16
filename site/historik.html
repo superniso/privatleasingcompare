@@ -60,11 +60,11 @@ a{color:inherit}
 <p class="sub" id="note" style="margin-top:16px"></p>
 </main>
 <script>
-const COLS=[["brand","Mærke"],["name","Model"],["down","Udbetaling"],["km","Km/år"],["first","Første pris"],["last","Pris pr. mdr."],["total","Samlet"],["diff","Ændring i alt"],["n","Antal ændringer"],["seen","Sidst set"]];
+const COLS=[["brand","Mærke"],["name","Model"],["down","Udbetaling"],["km","Km/år"],["new_price","Nypris fra"],["first","Første pris"],["last","Pris pr. mdr."],["total","Samlet"],["diff","Ændring i alt"],["n","Antal ændringer"],["seen","Sidst set"]];
 const NC=COLS.length;
 const $=id=>document.getElementById(id), kr=n=>n==null?"–":n.toLocaleString("da-DK")+" kr.";
 const dato=d=>new Date(d).toLocaleDateString("da-DK",{day:"numeric",month:"short",year:"numeric"});
-const sgn=n=>`<span class="${n>0?"up":"down"}">${n>0?"▲":"▼"} ${Math.abs(n).toLocaleString("da-DK")} kr.</span>`;
+const sgn=n=>n===0?`<span class="old">uændret</span>`:`<span class="${n>0?"up":"down"}">${n>0?"▲":"▼"} ${Math.abs(n).toLocaleString("da-DK")} kr.</span>`;
 let rows=[],stack=[{k:"name",dir:1},{k:"down",dir:1},{k:"km",dir:1}],open=new Set(),latest=null,shown=[];
 function cmp(a,b){for(const s of stack){const x=a[s.k],y=b[s.k];if(x==null&&y==null)continue;if(x==null)return 1;if(y==null)return-1;
   const c=typeof x==="string"?x.localeCompare(y,"da",{numeric:true}):x-y;if(c)return c*s.dir}return 0}
@@ -74,13 +74,13 @@ const E="<td></td>";
 function children(r){const p=r.prices,out=[];
   for(let i=p.length-1;i>=0;i--){const x=p[i],prev=p[i-1];
     const tag=i===p.length-1?" · nuværende":(i===0?" · første observation":"");
-    out.push(`<tr class="child${i===0?" last":""}"><td></td><td>↳ ${dato(x[0])}${tag}</td>${E}${E}${E}<td>${kr(x[1])}${prev?" "+sgn(x[1]-prev[1]):""}</td><td>${x[2]?kr(x[2]):"–"}</td>${E}${E}${E}</tr>`)}
+    out.push(`<tr class="child${i===0?" last":""}"><td></td><td>↳ ${dato(x[0])}${tag}</td>${E}${E}<td>${x[3]?kr(x[3])+(prev&&prev[3]&&prev[3]!==x[3]?" "+sgn(x[3]-prev[3]):""):"–"}</td>${E}<td>${kr(x[1])}${prev?" "+sgn(x[1]-prev[1]):""}</td><td>${x[2]?kr(x[2]):"–"}</td>${E}${E}${E}</tr>`)}
   return out.join("")}
 function parent(r){const ex=r.n>0,o=open.has(r.id);
   return `<tr class="parent${ex?" exp":""}" data-id="${r.id}" ${ex?`tabindex="0" aria-expanded="${o}"`:""}>
     <td><span class="chev">${ex?(o?"▾":"▸"):""}</span>${r.brand}</td>
     <td>${r.link?`<a href="${r.link}" target="_blank" rel="noopener" title="Åbn privatleasing-siden hos forhandleren">${r.name} ↗</a>`:r.name}<span class="sm">Nypris fra ${kr(r.new_price)} · ${r.months} mdr.</span></td>
-    <td>${kr(r.down)}</td><td>${r.km.toLocaleString("da-DK")}</td><td>${kr(r.first)}</td><td>${kr(r.last)}</td><td>${r.total?kr(r.total):"–"}</td>
+    <td>${kr(r.down)}</td><td>${r.km.toLocaleString("da-DK")}</td><td>${kr(r.new_price)}</td><td>${kr(r.first)}</td><td>${kr(r.last)}</td><td>${r.total?kr(r.total):"–"}</td>
     <td>${ex?sgn(r.diff):"–"}</td><td>${r.n}</td>
     <td class="${r.seen<latest?"old":""}">${dato(r.seen)}${r.seen<latest?" (udgået?)":""}</td></tr>${ex&&o?children(r):""}`}
 function draw(){
