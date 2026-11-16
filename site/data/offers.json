@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-15T12:07+00:00",
+ "updated": "2026-11-16T08:38+00:00",
  "status": {
   "vw": {
    "ok": true,
@@ -11,7 +11,7 @@
   },
   "audi": {
    "ok": false,
-   "error": "selectors er ikke udfyldt endnu"
+   "error": "ingen leasingkort på https://ww4.audi.dk/privatleasing/ (sidetitel: 'Audi Privatleasing: kør i en ny Audi med fast månedlig pris')"
   },
   "hyundai": {
    "ok": false,
