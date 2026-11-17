@@ -36,8 +36,19 @@ async def list_prices(page):
     return found
 
 
+async def uncheck_insurance(page):
+    """Fjerner flueben i 'Priser inkl. forsikring' på alle kort, så ydelsen kan sammenlignes mellem mærker."""
+    n = await page.evaluate("""() => { let n = 0;
+      document.querySelectorAll("input[id^='insuranceCheckbox_']").forEach(e => { if (e.checked) { e.click(); n++; } });
+      return n; }""")
+    if n:
+        await page.wait_for_timeout(500)  # lad priserne opdatere
+    return n
+
+
 async def read_cards(page, prices=None):
     rows = []
+    await uncheck_insurance(page)
     for card in await page.query_selector_all(".sf-card-auto"):
         if not await card.is_visible():  # filtrerede/skjulte kort giver forkert tekst
             continue
@@ -57,7 +68,10 @@ async def read_cards(page, prices=None):
             continue
         monthly_key = next((k for k in f if k.startswith(("Månedlig ydelse", "Mdl. ydelse"))), None)
         if not monthly_key or "inkl" in monthly_key:
-            raise RuntimeError("kortet viser ydelse inkl. forsikring – afkryds forsikring fra før læsning")
+            # kan ikke aflæses uden forsikring: spring kortet over i stedet for at stoppe hele mærket
+            print(f"[{TAG}] springer kort over (ydelse inkl. forsikring kunne ikke fjernes): "
+                  f"{(await title.inner_text()).strip()!r}, felter: {list(f)}")
+            continue
         # Nypris står kun i checkbox-id'et. Mangler den, udfyldes nypris via new_prices.yaml
         new_price, down_id = ("", "")
         if box:
