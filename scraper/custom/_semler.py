@@ -156,10 +156,10 @@ def kr(n):
     return f"{int(n):,}".replace(",", ".") + " kr."
 
 
-async def scrape_model(page, seen, out):
+async def scrape_model(page, seen, out, extra_prices=None):
     """Henter alle kombinationer af førstegangsydelse og km på den aktuelle modelside."""
     combos, snaps = set(), []
-    prices = await list_prices(page)
+    prices = {**(extra_prices or {}), **await list_prices(page)}  # prisboksene på selve siden går forud
     print(f"[{TAG}] {len({k for k in prices if k[1]})} vejledende priser fundet i prisboksene")
     bases = {k[:5] for k in seen}
 
@@ -261,12 +261,39 @@ async def locate_cards(page):
     return frame
 
 
+def fill_prices(rows):
+    """Kort uden nypris låner nyprisen fra kort af samme model og variant, hvis den er entydig."""
+    known = {}
+    for r in rows:
+        if r["new_price"]:
+            known.setdefault((r["model"], r["variant"]), set()).add(r["new_price"])
+    for r in rows:
+        if not r["new_price"]:
+            v = known.get((r["model"], r["variant"]))
+            if v and len(v) == 1:
+                r["new_price"] = next(iter(v))
+
+
 async def scrape_site(page, tag, urls):
     """urls: async funktion der returnerer [(navn, url), ...]."""
     global TAG, LINK_URL
     TAG = tag
     seen, out = {}, []
-    for name, url in await urls(page):
+    for item in await urls(page):
+        name, url = item[:2]
+        price_url = item[2] if len(item) > 2 else None  # valgfri side med 'Vejledende pris' for modellen
+        extra = {}
+        if price_url:
+            try:
+                await page.goto(price_url, wait_until="networkidle", timeout=45000)
+            except Exception:
+                pass
+            try:
+                await page.wait_for_selector(".sf-card-auto-pricing-details-item", timeout=15000)
+                extra = await list_prices(page)
+                print(f"[{TAG}] {name}: {len({k for k in extra if k[1]})} vejledende priser fundet på prissiden")
+            except Exception:
+                print(f"[{TAG}] {name}: ingen priser fundet på {price_url}")
         try:
             await page.goto(url, wait_until="networkidle", timeout=45000)
         except Exception:
@@ -277,7 +304,8 @@ async def scrape_site(page, tag, urls):
             raise RuntimeError(f"ingen leasingkort på {url} (sidetitel: {await page.title()!r})")
         LINK_URL = url
         before = len(out)
-        downs, kms, combos = await scrape_model(frame, seen, out)
+        downs, kms, combos = await scrape_model(frame, seen, out, extra)
+        fill_prices(out[before:])
         missing = sorted({f"{r['model']} {r['variant']}" for r in out[before:] if not r["new_price"]})
         if missing:
             print(f"[{TAG}] {name}: nypris mangler for {missing} - læg dem i new_prices.yaml")
