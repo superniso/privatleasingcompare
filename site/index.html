@@ -38,7 +38,7 @@ tr.good td{background:var(--good-bg)}
 .up{color:var(--bad)}.down{color:var(--good)}
 td a{color:inherit;font-weight:700;text-underline-offset:3px}
 a:focus-visible,th:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid var(--good);outline-offset:2px}
-.status{margin-top:20px;color:var(--mute);font-size:13px}
+.status{margin:-4px 0 16px;color:var(--mute);font-size:13px}
 .status b{color:var(--bad)}
 .empty{padding:40px 20px;text-align:center;color:var(--mute)}
 .seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--surface)}
@@ -76,6 +76,9 @@ a:focus-visible,th:focus-visible,select:focus-visible,input:focus-visible{outlin
 #more{display:flex;gap:12px;align-items:center;justify-content:center;margin:24px 0;color:var(--mute)}
 #more button{font:inherit;color:var(--bg);background:var(--ink);border:0;border-radius:8px;padding:9px 16px;font-weight:700;cursor:pointer}
 .card{content-visibility:auto;contain-intrinsic-size:auto 600px}
+.tog{font:inherit;color:var(--mute);background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:8px 12px;cursor:pointer}
+.tog[aria-pressed=true]{background:var(--good);border-color:var(--good);color:var(--surface);font-weight:700}
+.tog:focus-visible{outline:2px solid var(--good);outline-offset:2px}
 </style>
 </head>
 <body>
@@ -97,15 +100,16 @@ a:focus-visible,th:focus-visible,select:focus-visible,input:focus-visible{outlin
     <option value="down,monthly">Sortér: Førstegangsydelse (lavest først)</option>
     <option value="km,monthly">Sortér: Km pr. år (lavest først)</option>
   </select>
-  <label class="chk"><input id="onlyGood" type="checkbox"> Kun gode tilbud</label>
+  <button type="button" class="tog" id="g36" aria-pressed="false" title="Kun tilbud, hvor andelen af nyprisen pr. 36 mdr. er under 50 %">Gode tilbud 36 mdr.</button>
+  <button type="button" class="tog" id="g12" aria-pressed="false" title="Kun tilbud, hvor samlet pris for 12 mdr. er højst 17 % af nyprisen">Gode tilbud 12 mdr.</button>
   <div class="seg" role="group" aria-label="Visning"><button type="button" data-v="tiles">Tiles</button><button type="button" data-v="list">Liste</button></div>
   <span class="stat" id="stat"></span>
 </div>
+<p class="status" id="status"></p>
 <div class="tiles" id="tiles" hidden></div>
 <div class="wrap" id="lst" hidden><table>
 <thead><tr id="head"></tr></thead><tbody id="body"></tbody></table></div>
 <div id="more" hidden><span id="moreinfo"></span><button type="button" id="moreBtn">Vis flere</button></div>
-<p class="status" id="status"></p>
 </main>
 <script>
 const TIP_R="Samlet tilbagebetaling ÷ bilens nypris. Samlet tilbagebetaling = udbetaling (førstegangsydelse) + månedlig ydelse × løbetid + evt. afleveringsgebyr. Højst 45 % er et rigtig godt tilbud, og under 50 % er et fornuftigt tilbud.\n\nAftaler under 36 mdr. (fx 12 mdr.): En kort aftale ser kunstigt billig ud, fordi du kun betaler for få måneder. Derfor omregnes den. Vi antager samme udbetaling og månedlige ydelse, beregner andelen for både 36 og 48 mdr. og bruger gennemsnittet. Tal med * er omregnet. Korte aftaler har ofte en højere ydelse pr. måned, så det er et forsigtigt (højt) estimat.",TIP_C="Dato for seneste prisændring. Er prisen ikke ændret siden første registrering, vises den dato, tilbuddet først blev set.";
@@ -125,6 +129,7 @@ function head(){$("head").innerHTML=COLS.map(([k,l,t])=>{const i=stack.findIndex
   return `<th tabindex="0" data-k="${k}" ${t?`title="${esc(t)}"`:""} ${i<0?"":`aria-sort="${stack[i].dir>0?"ascending":"descending"}"`}${arrow}>${l}</th>`}).join("")}
 function fill(id,vals,fmt){$(id).insertAdjacentHTML("beforeend",[...new Set(vals)].sort((a,b)=>a-b).map(v=>`<option value="${v}">${fmt(v)}</option>`).join(""))}
 const pct=x=>(x*100).toFixed(1).replace(".",",")+" %";
+const is36=o=>o.r36!=null&&o.r36<.5,is12=o=>o.r12!=null&&o.r12<=.17;
 const tier=x=>x==null?"":x<=.45?"t2":x<.5?"t1":"";
 const enrich=o=>{const fee=Math.max(0,(o.total||0)-o.down-o.monthly*o.months);o.t12=o.down+o.monthly*12+fee;o.r12=o.new_price?o.t12/o.new_price:null;o.r36=o.new_price?(o.down+o.monthly*36+fee)/o.new_price:null};
 const c12=x=>x<=.15?"up":x<=.17?"mid":"dn";
@@ -148,10 +153,10 @@ function tile(o){const w=o.ratio==null?0:Math.min(o.ratio,1)*100;
   <div class="meter"><div class="mh"><span title="${esc(TIP_R12)}">12 mdr. af nypris</span>${p12(o)}</div><div class="bar2"><i class="${o.r12==null?"":c12(o.r12)}" style="width:${o.r12==null?0:Math.min(o.r12/.3,1)*100}%"></i><u></u><u style="left:56.7%"></u></div></div>
   <footer><span>Ændret ${dato(o.last_changed||o.first_seen)}</span><a class="btn" href="${o.link}" target="_blank" rel="noopener">Se tilbud ↗</a></footer></article>`}
 function draw(){
-  const b=$("brand").value,q=$("q").value.toLowerCase(),g=$("onlyGood").checked,km=$("km").value,dn=$("down").value;
-  const r=all.filter(o=>(!b||o.brand_id===b)&&(!g||o.good)&&(!km||o.km==km)&&(dn===""||o.down==dn)&&(o.model+" "+o.variant).toLowerCase().includes(q)).sort(cmp);
+  const b=$("brand").value,q=$("q").value.toLowerCase(),km=$("km").value,dn=$("down").value;
+  const r=all.filter(o=>(!b||o.brand_id===b)&&(!f36||is36(o))&&(!f12||is12(o))&&(!km||o.km==km)&&(dn===""||o.down==dn)&&(o.model+" "+o.variant).toLowerCase().includes(q)).sort(cmp);
   head();
-  $("stat").textContent=`${r.length} tilbud · ${r.filter(o=>o.good).length} gode`;
+  $("stat").textContent=`${r.length} tilbud · ${r.filter(is36).length} gode 36 mdr. · ${r.filter(is12).length} gode 12 mdr.`;
   $("more").hidden=r.length<=limit;$("moreinfo").textContent=`Viser ${Math.min(limit,r.length)} af ${r.length}`;
   document.querySelectorAll(".seg button").forEach(x=>x.setAttribute("aria-pressed",x.dataset.v===view));
   const t=view==="tiles";$("tiles").hidden=!t;$("lst").hidden=t;
@@ -164,13 +169,14 @@ function draw(){
     <td>${kr(o.total)}</td><td>${kr(o.new_price)}</td><td>${pill(o)}</td><td>${pill36(o)}</td><td>${kr(o.t12)}</td><td>${p12(o)}</td><td>${dato(o.last_changed||o.first_seen)}</td></tr>`}).join("")
   :`<tr><td colspan="13" class="empty">Ingen tilbud matcher dine filtre.</td></tr>`;
 }
-let limit=48;const step=()=>view==="tiles"?48:100;
+let limit=48,f36=false,f12=false;const step=()=>view==="tiles"?48:100;
 function render(){limit=step();draw()}
 document.querySelector(".seg").addEventListener("click",e=>{const v=e.target.dataset.v;if(!v)return;view=v;try{localStorage.setItem("view",v)}catch(err){}render()});
 $("head").addEventListener("click",e=>{const k=e.target.dataset.k;if(!k)return;
   stack=stack[0].k===k?[{k,dir:-stack[0].dir},...stack.slice(1)]:[{k,dir:1},...stack.filter(s=>s.k!==k)].slice(0,3);render()});
 $("head").addEventListener("keydown",e=>{if(e.key==="Enter")e.target.click()});
-["brand","onlyGood","km","down"].forEach(i=>$(i).addEventListener("input",render));
+["brand","km","down"].forEach(i=>$(i).addEventListener("input",render));
+for(const [id,tog] of [["g36",()=>f36=!f36],["g12",()=>f12=!f12]])$(id).addEventListener("click",e=>{const on=tog();e.currentTarget.setAttribute("aria-pressed",on);render()});
 let tq;$("q").addEventListener("input",()=>{clearTimeout(tq);tq=setTimeout(render,200)});
 $("sort").addEventListener("input",e=>{stack=e.target.value.split(",").map(k=>({k,dir:1}));render()});
 $("moreBtn").addEventListener("click",()=>{limit+=step();draw()});
