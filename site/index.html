@@ -144,7 +144,7 @@ function tile(o){const w=o.ratio==null?0:Math.min(o.ratio,1)*100;
   <div class="price"><b>${o.monthly.toLocaleString("da-DK")}</b><span>kr./md.</span>${chg(o)}</div>
   <dl><div><dt>Udbetaling</dt><dd>${kr(o.down)}</dd></div><div><dt>Km pr. år</dt><dd>${o.km.toLocaleString("da-DK")}</dd></div><div><dt>Løbetid</dt><dd>${o.months} mdr.</dd></div><div><dt>Samlet</dt><dd>${kr(o.total)}</dd></div><div><dt>Samlet 12 mdr.</dt><dd>${kr(o.t12)}</dd></div><div><dt>Nypris fra</dt><dd>${kr(o.new_price)}</dd></div></dl>
   <div class="meter"><div class="mh"><span title="${esc(TIP_R)}">Andel af nypris</span>${pill(o)}</div><div class="bar2"><i class="${tier(o.ratio)}" style="width:${w}%"></i><u></u></div></div>
-  <div class="meter"><div class="mh"><span title="${esc(TIP_R36)}">Andel af nypris pr. 36 mdr.</span>${pill36(o)}</div><div class="bar2"><i class="${tier(o.r36)}" style="width:${o.r36==null?0:Math.min(o.r36,1)*100}%"></i><u></u></div></div>
+  <div class="meter"><div class="mh"><span title="${esc(TIP_R36)}">36 mdr. af nypris</span>${pill36(o)}</div><div class="bar2"><i class="${tier(o.r36)}" style="width:${o.r36==null?0:Math.min(o.r36,1)*100}%"></i><u></u></div></div>
   <div class="meter"><div class="mh"><span title="${esc(TIP_R12)}">12 mdr. af nypris</span>${p12(o)}</div><div class="bar2"><i class="${o.r12==null?"":c12(o.r12)}" style="width:${o.r12==null?0:Math.min(o.r12/.3,1)*100}%"></i><u></u><u style="left:56.7%"></u></div></div>
   <footer><span>Ændret ${dato(o.last_changed||o.first_seen)}</span><a class="btn" href="${o.link}" target="_blank" rel="noopener">Se tilbud ↗</a></footer></article>`}
 function draw(){
