@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-17T10:31+00:00",
+ "updated": "2026-11-17T10:45+00:00",
  "status": {
   "vw": {
    "ok": true,
@@ -7,7 +7,7 @@
   },
   "skoda": {
    "ok": false,
-   "error": "selectors er ikke udfyldt endnu"
+   "error": "kortet viser ydelse inkl. forsikring – afkryds forsikring fra før læsning"
   },
   "audi": {
    "ok": true,
