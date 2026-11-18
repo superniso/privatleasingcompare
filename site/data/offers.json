@@ -1,49 +1,72 @@
 {
- "updated": "2026-11-18T08:34+00:00",
+ "updated": "2026-11-18T09:25+00:00",
  "status": {
   "vw": {
+   "name": "Volkswagen",
+   "state": "ok",
    "ok": true,
-   "count": 577
+   "count": 577,
+   "warnings": [],
+   "last_ok": "2026-11-18"
   },
   "skoda": {
-   "ok": false,
-   "error": "ElementHandle.is_checked: Element is not attached to the DOM\nCall log:\nwaiting for locator(\":scope\")\n  -   locator resolved to <input type=\"checkbox\" id=\"insuranceCheckbox_324995_14995\"/>\n"
+   "name": "Škoda",
+   "state": "ok",
+   "ok": true,
+   "count": 111,
+   "warnings": [],
+   "last_ok": "2026-11-18"
   },
   "audi": {
+   "name": "Audi",
+   "state": "ok",
    "ok": true,
-   "count": 114
+   "count": 114,
+   "warnings": [],
+   "last_ok": "2026-11-18"
   },
   "hyundai": {
-   "ok": false,
-   "error": "selectors er ikke udfyldt endnu"
+   "name": "Hyundai",
+   "state": "ikke_sat_op",
+   "ok": false
   },
   "kia": {
-   "ok": false,
-   "error": "selectors er ikke udfyldt endnu"
+   "name": "Kia",
+   "state": "ikke_sat_op",
+   "ok": false
   },
   "tesla": {
+   "name": "Tesla",
+   "state": "fejl",
    "ok": false,
-   "error": "Tesla afviser forespørgslen (Access Denied) - sandsynligvis blokering af serverens IP"
+   "error": "Tesla afviser forespørgslen (Access Denied) - sandsynligvis blokering af serverens IP",
+   "carried": 0,
+   "last_ok": null
   },
   "zeekr": {
-   "ok": false,
-   "error": "selectors er ikke udfyldt endnu"
+   "name": "Zeekr",
+   "state": "ikke_sat_op",
+   "ok": false
   },
   "bmw": {
-   "ok": false,
-   "error": "selectors er ikke udfyldt endnu"
+   "name": "BMW",
+   "state": "ikke_sat_op",
+   "ok": false
   },
   "mercedes": {
-   "ok": false,
-   "error": "selectors er ikke udfyldt endnu"
+   "name": "Mercedes",
+   "state": "ikke_sat_op",
+   "ok": false
   },
   "ford": {
-   "ok": false,
-   "error": "selectors er ikke udfyldt endnu"
+   "name": "Ford",
+   "state": "ikke_sat_op",
+   "ok": false
   },
   "volvo": {
-   "ok": false,
-   "error": "selectors er ikke udfyldt endnu"
+   "name": "Volvo",
+   "state": "ikke_sat_op",
+   "ok": false
   }
  },
  "offers": [
@@ -12234,8 +12257,7 @@
    "link": "https://ww4.skoda.dk/prislister/elroq/leasingpriser/",
    "first_seen": "2026-11-17",
    "prev_monthly": null,
-   "last_changed": "2026-11-17",
-   "stale": true
+   "last_changed": "2026-11-17"
   },
   {
    "id": "skoda|Elroq 60 Selection|190 hk|48|10000|14995",
@@ -12256,8 +12278,7 @@
    "link": "https://ww4.skoda.dk/prislister/elroq/leasingpriser/",
    "first_seen": "2026-11-17",
    "prev_monthly": null,
-   "last_changed": "2026-11-17",
-   "stale": true
+   "last_changed": "2026-11-17"
   },
   {
    "id": "skoda|Elroq 85 Selection|286 hk|48|10000|29995",
@@ -12278,8 +12299,7 @@
    "link": "https://ww4.skoda.dk/prislister/elroq/leasingpriser/",
    "first_seen": "2026-11-17",
    "prev_monthly": null,
-   "last_changed": "2026-11-17",
-   "stale": true
+   "last_changed": "2026-11-17"
   },
   {
    "id": "skoda|Elroq 85 Selection|286 hk|48|10000|14995",
@@ -12300,8 +12320,7 @@
    "link": "https://ww4.skoda.dk/prislister/elroq/leasingpriser/",
    "first_seen": "2026-11-17",
    "prev_monthly": null,
-   "last_changed": "2026-11-17",
-   "stale": true
+   "last_changed": "2026-11-17"
   },
   {
    "id": "skoda|Elroq 60 Selection|190 hk|48|15000|14995",
@@ -12322,8 +12341,7 @@
    "link": "https://ww4.skoda.dk/prislister/elroq/leasingpriser/",
    "first_seen": "2026-11-17",
    "prev_monthly": null,
-   "last_changed": "2026-11-17",
-   "stale": true
+   "last_changed": "2026-11-17"
   },
   {
    "id": "skoda|Elroq 85 Selection|286 hk|48|15000|14995",
@@ -12344,8 +12362,7 @@
    "link": "https://ww4.skoda.dk/prislister/elroq/leasingpriser/",
    "first_seen": "2026-11-17",
    "prev_monthly": null,
-   "last_changed": "2026-11-17",
-   "stale": true
+   "last_changed": "2026-11-17"
   },
   {
    "id": "skoda|Elroq 60 Selection|190 hk|48|20000|14995",
@@ -12366,8 +12383,7 @@
    "link": "https://ww4.skoda.dk/prislister/elroq/leasingpriser/",
    "first_seen": "2026-11-17",
    "prev_monthly": null,
-   "last_changed": "2026-11-17",
-   "stale": true
+   "last_changed": "2026-11-17"
   },
   {
    "id": "skoda|Elroq 85 Selection|286 hk|48|20000|14995",
@@ -12388,8 +12404,7 @@
    "link": "https://ww4.skoda.dk/prislister/elroq/leasingpriser/",
    "first_seen": "2026-11-17",
    "prev_monthly": null,
-   "last_changed": "2026-11-17",
-   "stale": true
+   "last_changed": "2026-11-17"
   },
   {
    "id": "skoda|Elroq 60 Selection|190 hk|48|25000|14995",
@@ -12410,8 +12425,7 @@
    "link": "https://ww4.skoda.dk/prislister/elroq/leasingpriser/",
    "first_seen": "2026-11-17",
    "prev_monthly": null,
-   "last_changed": "2026-11-17",
-   "stale": true
+   "last_changed": "2026-11-17"
   },
   {
    "id": "skoda|Elroq 85 Selection|286 hk|48|25000|14995",
@@ -12432,8 +12446,7 @@
    "link": "https://ww4.skoda.dk/prislister/elroq/leasingpriser/",
    "first_seen": "2026-11-17",
    "prev_monthly": null,
-   "last_changed": "2026-11-17",
-   "stale": true
+   "last_changed": "2026-11-17"
   },
   {
    "id": "skoda|Elroq 60 Selection|190 hk|48|30000|14995",
@@ -12454,8 +12467,7 @@
    "link": "https://ww4.skoda.dk/prislister/elroq/leasingpriser/",
    "first_seen": "2026-11-17",
    "prev_monthly": null,
-   "last_changed": "2026-11-17",
-   "stale": true
+   "last_changed": "2026-11-17"
   },
   {
    "id": "skoda|Elroq 85 Selection|286 hk|48|30000|14995",
@@ -12476,8 +12488,7 @@
    "link": "https://ww4.skoda.dk/prislister/elroq/leasingpriser/",
    "first_seen": "2026-11-17",
    "prev_monthly": null,
-   "last_changed": "2026-11-17",
-   "stale": true
+   "last_changed": "2026-11-17"
   },
   {
    "id": "skoda|Elroq 60 Selection|190 hk|48|30000|29995",
@@ -12498,8 +12509,7 @@
    "link": "https://ww4.skoda.dk/prislister/elroq/leasingpriser/",
    "first_seen": "2026-11-17",
    "prev_monthly": null,
-   "last_changed": "2026-11-17",
-   "stale": true
+   "last_changed": "2026-11-17"
   },
   {
    "id": "skoda|Elroq 85 Selection|286 hk|48|30000|29995",
@@ -12520,8 +12530,7 @@
    "link": "https://ww4.skoda.dk/prislister/elroq/leasingpriser/",
    "first_seen": "2026-11-17",
    "prev_monthly": null,
-   "last_changed": "2026-11-17",
-   "stale": true
+   "last_changed": "2026-11-17"
   },
   {
    "id": "skoda|Elroq 60 Selection|190 hk|48|15000|29995",
@@ -12542,8 +12551,7 @@
    "link": "https://ww4.skoda.dk/prislister/elroq/leasingpriser/",
    "first_seen": "2026-11-17",
    "prev_monthly": null,
-   "last_changed": "2026-11-17",
-   "stale": true
+   "last_changed": "2026-11-17"
   },
   {
    "id": "skoda|Elroq 85 Selection|286 hk|48|15000|29995",
@@ -12564,8 +12572,7 @@
    "link": "https://ww4.skoda.dk/prislister/elroq/leasingpriser/",
    "first_seen": "2026-11-17",
    "prev_monthly": null,
-   "last_changed": "2026-11-17",
-   "stale": true
+   "last_changed": "2026-11-17"
   },
   {
    "id": "skoda|Elroq 60 Selection|190 hk|48|20000|29995",
@@ -12586,8 +12593,7 @@
    "link": "https://ww4.skoda.dk/prislister/elroq/leasingpriser/",
    "first_seen": "2026-11-17",
    "prev_monthly": null,
-   "last_changed": "2026-11-17",
-   "stale": true
+   "last_changed": "2026-11-17"
   },
   {
    "id": "skoda|Elroq 85 Selection|286 hk|48|20000|29995",
@@ -12608,8 +12614,7 @@
    "link": "https://ww4.skoda.dk/prislister/elroq/leasingpriser/",
    "first_seen": "2026-11-17",
    "prev_monthly": null,
-   "last_changed": "2026-11-17",
-   "stale": true
+   "last_changed": "2026-11-17"
   },
   {
    "id": "skoda|Elroq 60 Selection|190 hk|48|25000|29995",
@@ -12630,8 +12635,7 @@
    "link": "https://ww4.skoda.dk/prislister/elroq/leasingpriser/",
    "first_seen": "2026-11-17",
    "prev_monthly": null,
-   "last_changed": "2026-11-17",
-   "stale": true
+   "last_changed": "2026-11-17"
   },
   {
    "id": "skoda|Elroq 85 Selection|286 hk|48|25000|29995",
@@ -12652,8 +12656,7 @@
    "link": "https://ww4.skoda.dk/prislister/elroq/leasingpriser/",
    "first_seen": "2026-11-17",
    "prev_monthly": null,
-   "last_changed": "2026-11-17",
-   "stale": true
+   "last_changed": "2026-11-17"
   },
   {
    "id": "skoda|Enyaq 60 Selection|190 hk|36|10000|39995",
@@ -12674,8 +12677,7 @@
    "link": "https://ww4.skoda.dk/prislister/enyaq/leasingpriser/",
    "first_seen": "2026-11-17",
    "prev_monthly": null,
-   "last_changed": "2026-11-17",
-   "stale": true
+   "last_changed": "2026-11-17"
   },
   {
    "id": "skoda|Enyaq 85 Selection|286 hk|36|10000|39995",
@@ -12696,8 +12698,7 @@
    "link": "https://ww4.skoda.dk/prislister/enyaq/leasingpriser/",
    "first_seen": "2026-11-17",
    "prev_monthly": null,
-   "last_changed": "2026-11-17",
-   "stale": true
+   "last_changed": "2026-11-17"
   },
   {
    "id": "skoda|Enyaq 60 Selection|190 hk|36|10000|19995",
@@ -12718,8 +12719,7 @@
    "link": "https://ww4.skoda.dk/prislister/enyaq/leasingpriser/",
    "first_seen": "2026-11-17",
    "prev_monthly": null,
-   "last_changed": "2026-11-17",
-   "stale": true
+   "last_changed": "2026-11-17"
   },
   {
    "id": "skoda|Enyaq 85 Selection|286 hk|36|10000|19995",
@@ -12740,8 +12740,7 @@
    "link": "https://ww4.skoda.dk/prislister/enyaq/leasingpriser/",
    "first_seen": "2026-11-17",
    "prev_monthly": null,
-   "last_changed": "2026-11-17",
-   "stale": true
+   "last_changed": "2026-11-17"
   },
   {
    "id": "skoda|Enyaq 85 Sportline|286 hk|36|10000|39995",
@@ -12762,8 +12761,7 @@
    "link": "https://ww4.skoda.dk/prislister/enyaq/leasingpriser/",
    "first_seen": "2026-11-17",
    "prev_monthly": null,
-   "last_changed": "2026-11-17",
-   "stale": true
+   "last_changed": "2026-11-17"
   },
   {
    "id": "skoda|Enyaq RS|4x4 340 hk|36|10000|39995",
@@ -12784,8 +12782,7 @@
    "link": "https://ww4.skoda.dk/prislister/enyaq/leasingpriser/",
    "first_seen": "2026-11-17",
    "prev_monthly": null,
-   "last_changed": "2026-11-17",
-   "stale": true
+   "last_changed": "2026-11-17"
   },
   {
    "id": "skoda|Enyaq 85 Sportline|286 hk|36|10000|19995",
@@ -12806,8 +12803,7 @@
    "link": "https://ww4.skoda.dk/prislister/enyaq/leasingpriser/",
    "first_seen": "2026-11-17",
    "prev_monthly": null,
-   "last_changed": "2026-11-17",
-   "stale": true
+   "last_changed": "2026-11-17"
   },
   {
    "id": "skoda|Enyaq 60 Selection|190 hk|36|15000|19995",
@@ -12828,8 +12824,7 @@
    "link": "https://ww4.skoda.dk/prislister/enyaq/leasingpriser/",
    "first_seen": "2026-11-17",
    "prev_monthly": null,
-   "last_changed": "2026-11-17",
-   "stale": true
+   "last_changed": "2026-11-17"
   },
   {
    "id": "skoda|Enyaq 85 Selection|286 hk|36|15000|19995",
@@ -12850,8 +12845,7 @@
    "link": "https://ww4.skoda.dk/prislister/enyaq/leasingpriser/",
    "first_seen": "2026-11-17",
    "prev_monthly": null,
-   "last_changed": "2026-11-17",
-   "stale": true
+   "last_changed": "2026-11-17"
   },
   {
    "id": "skoda|Enyaq 85 Sportline|286 hk|36|15000|19995",
@@ -12872,8 +12866,7 @@
    "link": "https://ww4.skoda.dk/prislister/enyaq/leasingpriser/",
    "first_seen": "2026-11-17",
    "prev_monthly": null,
-   "last_changed": "2026-11-17",
-   "stale": true
+   "last_changed": "2026-11-17"
   },
   {
    "id": "skoda|Enyaq 60 Selection|190 hk|36|20000|19995",
@@ -12894,8 +12887,7 @@
    "link": "https://ww4.skoda.dk/prislister/enyaq/leasingpriser/",
    "first_seen": "2026-11-17",
    "prev_monthly": null,
-   "last_changed": "2026-11-17",
-   "stale": true
+   "last_changed": "2026-11-17"
   },
   {
    "id": "skoda|Enyaq 85 Selection|286 hk|36|20000|19995",
@@ -12916,8 +12908,7 @@
    "link": "https://ww4.skoda.dk/prislister/enyaq/leasingpriser/",
    "first_seen": "2026-11-17",
    "prev_monthly": null,
-   "last_changed": "2026-11-17",
-   "stale": true
+   "last_changed": "2026-11-17"
   },
   {
    "id": "skoda|Enyaq 85 Sportline|286 hk|36|20000|19995",
@@ -12938,8 +12929,7 @@
    "link": "https://ww4.skoda.dk/prislister/enyaq/leasingpriser/",
    "first_seen": "2026-11-17",
    "prev_monthly": null,
-   "last_changed": "2026-11-17",
-   "stale": true
+   "last_changed": "2026-11-17"
   },
   {
    "id": "skoda|Enyaq 60 Selection|190 hk|36|25000|19995",
@@ -12960,8 +12950,7 @@
    "link": "https://ww4.skoda.dk/prislister/enyaq/leasingpriser/",
    "first_seen": "2026-11-17",
    "prev_monthly": null,
-   "last_changed": "2026-11-17",
-   "stale": true
+   "last_changed": "2026-11-17"
   },
   {
    "id": "skoda|Enyaq 85 Selection|286 hk|36|25000|19995",
@@ -12982,8 +12971,7 @@
    "link": "https://ww4.skoda.dk/prislister/enyaq/leasingpriser/",
    "first_seen": "2026-11-17",
    "prev_monthly": null,
-   "last_changed": "2026-11-17",
-   "stale": true
+   "last_changed": "2026-11-17"
   },
   {
    "id": "skoda|Enyaq 85 Sportline|286 hk|36|25000|19995",
@@ -13004,8 +12992,7 @@
    "link": "https://ww4.skoda.dk/prislister/enyaq/leasingpriser/",
    "first_seen": "2026-11-17",
    "prev_monthly": null,
-   "last_changed": "2026-11-17",
-   "stale": true
+   "last_changed": "2026-11-17"
   },
   {
    "id": "skoda|Enyaq 60 Selection|190 hk|36|30000|19995",
@@ -13026,8 +13013,7 @@
    "link": "https://ww4.skoda.dk/prislister/enyaq/leasingpriser/",
    "first_seen": "2026-11-17",
    "prev_monthly": null,
-   "last_changed": "2026-11-17",
-   "stale": true
+   "last_changed": "2026-11-17"
   },
   {
    "id": "skoda|Enyaq 85 Selection|286 hk|36|30000|19995",
@@ -13048,8 +13034,7 @@
    "link": "https://ww4.skoda.dk/prislister/enyaq/leasingpriser/",
    "first_seen": "2026-11-17",
    "prev_monthly": null,
-   "last_changed": "2026-11-17",
-   "stale": true
+   "last_changed": "2026-11-17"
   },
   {
    "id": "skoda|Enyaq 85 Sportline|286 hk|36|30000|19995",
@@ -13070,8 +13055,7 @@
    "link": "https://ww4.skoda.dk/prislister/enyaq/leasingpriser/",
    "first_seen": "2026-11-17",
    "prev_monthly": null,
-   "last_changed": "2026-11-17",
-   "stale": true
+   "last_changed": "2026-11-17"
   },
   {
    "id": "skoda|Enyaq 60 Selection|190 hk|36|30000|39995",
@@ -13092,8 +13076,7 @@
    "link": "https://ww4.skoda.dk/prislister/enyaq/leasingpriser/",
    "first_seen": "2026-11-17",
    "prev_monthly": null,
-   "last_changed": "2026-11-17",
-   "stale": true
+   "last_changed": "2026-11-17"
   },
   {
    "id": "skoda|Enyaq 85 Selection|286 hk|36|30000|39995",
@@ -13114,8 +13097,7 @@
    "link": "https://ww4.skoda.dk/prislister/enyaq/leasingpriser/",
    "first_seen": "2026-11-17",
    "prev_monthly": null,
-   "last_changed": "2026-11-17",
-   "stale": true
+   "last_changed": "2026-11-17"
   },
   {
    "id": "skoda|Enyaq 60 Selection|190 hk|36|15000|39995",
@@ -13136,8 +13118,7 @@
    "link": "https://ww4.skoda.dk/prislister/enyaq/leasingpriser/",
    "first_seen": "2026-11-17",
    "prev_monthly": null,
-   "last_changed": "2026-11-17",
-   "stale": true
+   "last_changed": "2026-11-17"
   },
   {
    "id": "skoda|Enyaq 85 Selection|286 hk|36|15000|39995",
@@ -13158,8 +13139,7 @@
    "link": "https://ww4.skoda.dk/prislister/enyaq/leasingpriser/",
    "first_seen": "2026-11-17",
    "prev_monthly": null,
-   "last_changed": "2026-11-17",
-   "stale": true
+   "last_changed": "2026-11-17"
   },
   {
    "id": "skoda|Enyaq 85 Sportline|286 hk|36|15000|39995",
@@ -13180,8 +13160,7 @@
    "link": "https://ww4.skoda.dk/prislister/enyaq/leasingpriser/",
    "first_seen": "2026-11-17",
    "prev_monthly": null,
-   "last_changed": "2026-11-17",
-   "stale": true
+   "last_changed": "2026-11-17"
   },
   {
    "id": "skoda|Enyaq RS|4x4 340 hk|36|15000|39995",
@@ -13202,8 +13181,7 @@
    "link": "https://ww4.skoda.dk/prislister/enyaq/leasingpriser/",
    "first_seen": "2026-11-17",
    "prev_monthly": null,
-   "last_changed": "2026-11-17",
-   "stale": true
+   "last_changed": "2026-11-17"
   },
   {
    "id": "skoda|Enyaq 60 Selection|190 hk|36|20000|39995",
@@ -13224,8 +13202,7 @@
    "link": "https://ww4.skoda.dk/prislister/enyaq/leasingpriser/",
    "first_seen": "2026-11-17",
    "prev_monthly": null,
-   "last_changed": "2026-11-17",
-   "stale": true
+   "last_changed": "2026-11-17"
   },
   {
    "id": "skoda|Enyaq 85 Selection|286 hk|36|20000|39995",
@@ -13246,8 +13223,7 @@
    "link": "https://ww4.skoda.dk/prislister/enyaq/leasingpriser/",
    "first_seen": "2026-11-17",
    "prev_monthly": null,
-   "last_changed": "2026-11-17",
-   "stale": true
+   "last_changed": "2026-11-17"
   },
   {
    "id": "skoda|Enyaq 85 Sportline|286 hk|36|20000|39995",
@@ -13268,8 +13244,7 @@
    "link": "https://ww4.skoda.dk/prislister/enyaq/leasingpriser/",
    "first_seen": "2026-11-17",
    "prev_monthly": null,
-   "last_changed": "2026-11-17",
-   "stale": true
+   "last_changed": "2026-11-17"
   },
   {
    "id": "skoda|Enyaq RS|4x4 340 hk|36|20000|39995",
@@ -13290,8 +13265,7 @@
    "link": "https://ww4.skoda.dk/prislister/enyaq/leasingpriser/",
    "first_seen": "2026-11-17",
    "prev_monthly": null,
-   "last_changed": "2026-11-17",
-   "stale": true
+   "last_changed": "2026-11-17"
   },
   {
    "id": "skoda|Enyaq 60 Selection|190 hk|36|25000|39995",
@@ -13312,8 +13286,7 @@
    "link": "https://ww4.skoda.dk/prislister/enyaq/leasingpriser/",
    "first_seen": "2026-11-17",
    "prev_monthly": null,
-   "last_changed": "2026-11-17",
-   "stale": true
+   "last_changed": "2026-11-17"
   },
   {
    "id": "skoda|Enyaq 85 Selection|286 hk|36|25000|39995",
@@ -13334,8 +13307,7 @@
    "link": "https://ww4.skoda.dk/prislister/enyaq/leasingpriser/",
    "first_seen": "2026-11-17",
    "prev_monthly": null,
-   "last_changed": "2026-11-17",
-   "stale": true
+   "last_changed": "2026-11-17"
   },
   {
    "id": "skoda|Enyaq 85 Sportline|286 hk|36|25000|39995",
@@ -13356,8 +13328,7 @@
    "link": "https://ww4.skoda.dk/prislister/enyaq/leasingpriser/",
    "first_seen": "2026-11-17",
    "prev_monthly": null,
-   "last_changed": "2026-11-17",
-   "stale": true
+   "last_changed": "2026-11-17"
   },
   {
    "id": "skoda|Enyaq RS|4x4 340 hk|36|25000|39995",
@@ -13378,8 +13349,7 @@
    "link": "https://ww4.skoda.dk/prislister/enyaq/leasingpriser/",
    "first_seen": "2026-11-17",
    "prev_monthly": null,
-   "last_changed": "2026-11-17",
-   "stale": true
+   "last_changed": "2026-11-17"
   },
   {
    "id": "skoda|Enyaq 85 Sportline|286 hk|36|30000|39995",
@@ -13400,8 +13370,7 @@
    "link": "https://ww4.skoda.dk/prislister/enyaq/leasingpriser/",
    "first_seen": "2026-11-17",
    "prev_monthly": null,
-   "last_changed": "2026-11-17",
-   "stale": true
+   "last_changed": "2026-11-17"
   },
   {
    "id": "skoda|Enyaq RS|4x4 340 hk|36|30000|39995",
@@ -13422,8 +13391,7 @@
    "link": "https://ww4.skoda.dk/prislister/enyaq/leasingpriser/",
    "first_seen": "2026-11-17",
    "prev_monthly": null,
-   "last_changed": "2026-11-17",
-   "stale": true
+   "last_changed": "2026-11-17"
   },
   {
    "id": "skoda|Epiq 55 Selection Intro Edition|211 hk|48|10000|24995",
@@ -13444,8 +13412,7 @@
    "link": "https://ww4.skoda.dk/prislister/epiq/leasingpriser/",
    "first_seen": "2026-11-17",
    "prev_monthly": null,
-   "last_changed": "2026-11-17",
-   "stale": true
+   "last_changed": "2026-11-17"
   },
   {
    "id": "skoda|Epiq 55 Selection Intro Edition|211 hk|48|10000|9995",
@@ -13466,8 +13433,7 @@
    "link": "https://ww4.skoda.dk/prislister/epiq/leasingpriser/",
    "first_seen": "2026-11-17",
    "prev_monthly": null,
-   "last_changed": "2026-11-17",
-   "stale": true
+   "last_changed": "2026-11-17"
   },
   {
    "id": "skoda|Epiq 55 Selection Intro Edition|211 hk|48|15000|9995",
@@ -13488,8 +13454,7 @@
    "link": "https://ww4.skoda.dk/prislister/epiq/leasingpriser/",
    "first_seen": "2026-11-17",
    "prev_monthly": null,
-   "last_changed": "2026-11-17",
-   "stale": true
+   "last_changed": "2026-11-17"
   },
   {
    "id": "skoda|Epiq 55 Selection Intro Edition|211 hk|48|20000|9995",
@@ -13510,8 +13475,7 @@
    "link": "https://ww4.skoda.dk/prislister/epiq/leasingpriser/",
    "first_seen": "2026-11-17",
    "prev_monthly": null,
-   "last_changed": "2026-11-17",
-   "stale": true
+   "last_changed": "2026-11-17"
   },
   {
    "id": "skoda|Epiq 55 Selection Intro Edition|211 hk|48|20000|24995",
@@ -13532,8 +13496,7 @@
    "link": "https://ww4.skoda.dk/prislister/epiq/leasingpriser/",
    "first_seen": "2026-11-17",
    "prev_monthly": null,
-   "last_changed": "2026-11-17",
-   "stale": true
+   "last_changed": "2026-11-17"
   },
   {
    "id": "skoda|Epiq 55 Selection Intro Edition|211 hk|48|15000|24995",
@@ -13554,8 +13517,7 @@
    "link": "https://ww4.skoda.dk/prislister/epiq/leasingpriser/",
    "first_seen": "2026-11-17",
    "prev_monthly": null,
-   "last_changed": "2026-11-17",
-   "stale": true
+   "last_changed": "2026-11-17"
   },
   {
    "id": "skoda|Kamiq Monte Carlo|1.0 TSI 115 HK DSG|12|10000|9995",
@@ -13579,8 +13541,7 @@
    "link": "https://ww4.skoda.dk/prislister/kamiq/leasingpriser/",
    "first_seen": "2026-11-17",
    "prev_monthly": null,
-   "last_changed": "2026-11-17",
-   "stale": true
+   "last_changed": "2026-11-17"
   },
   {
    "id": "skoda|Kamiq Selection|1.0 TSI 115 HK DSG|36|10000|14995",
@@ -13601,8 +13562,7 @@
    "link": "https://ww4.skoda.dk/prislister/kamiq/leasingpriser/",
    "first_seen": "2026-11-17",
    "prev_monthly": null,
-   "last_changed": "2026-11-17",
-   "stale": true
+   "last_changed": "2026-11-17"
   },
   {
    "id": "skoda|Kamiq Monte Carlo|1.0 TSI 115 HK DSG|12|10000|0",
@@ -13626,8 +13586,7 @@
    "link": "https://ww4.skoda.dk/prislister/kamiq/leasingpriser/",
    "first_seen": "2026-11-17",
    "prev_monthly": null,
-   "last_changed": "2026-11-17",
-   "stale": true
+   "last_changed": "2026-11-17"
   },
   {
    "id": "skoda|Kamiq Monte Carlo|1.0 TSI 115 HK DSG|12|15000|9995",
@@ -13651,8 +13610,7 @@
    "link": "https://ww4.skoda.dk/prislister/kamiq/leasingpriser/",
    "first_seen": "2026-11-17",
    "prev_monthly": null,
-   "last_changed": "2026-11-17",
-   "stale": true
+   "last_changed": "2026-11-17"
   },
   {
    "id": "skoda|Kamiq Monte Carlo|1.0 TSI 115 HK DSG|12|20000|9995",
@@ -13676,8 +13634,7 @@
    "link": "https://ww4.skoda.dk/prislister/kamiq/leasingpriser/",
    "first_seen": "2026-11-17",
    "prev_monthly": null,
-   "last_changed": "2026-11-17",
-   "stale": true
+   "last_changed": "2026-11-17"
   },
   {
    "id": "skoda|Kamiq Selection|1.0 TSI 115 HK DSG|36|20000|14995",
@@ -13698,8 +13655,7 @@
    "link": "https://ww4.skoda.dk/prislister/kamiq/leasingpriser/",
    "first_seen": "2026-11-17",
    "prev_monthly": null,
-   "last_changed": "2026-11-17",
-   "stale": true
+   "last_changed": "2026-11-17"
   },
   {
    "id": "skoda|Kamiq Selection|1.0 TSI 115 HK DSG|36|15000|14995",
@@ -13720,8 +13676,7 @@
    "link": "https://ww4.skoda.dk/prislister/kamiq/leasingpriser/",
    "first_seen": "2026-11-17",
    "prev_monthly": null,
-   "last_changed": "2026-11-17",
-   "stale": true
+   "last_changed": "2026-11-17"
   },
   {
    "id": "skoda|Peaq 60 Selection|204 hk|48|10000|59995",
@@ -13742,8 +13697,7 @@
    "link": "https://ww4.skoda.dk/prislister/peaq/leasingpriser/",
    "first_seen": "2026-11-17",
    "prev_monthly": null,
-   "last_changed": "2026-11-17",
-   "stale": true
+   "last_changed": "2026-11-17"
   },
   {
    "id": "skoda|Peaq 90 Selection|286 hk|48|10000|59995",
@@ -13764,8 +13718,7 @@
    "link": "https://ww4.skoda.dk/prislister/peaq/leasingpriser/",
    "first_seen": "2026-11-17",
    "prev_monthly": null,
-   "last_changed": "2026-11-17",
-   "stale": true
+   "last_changed": "2026-11-17"
   },
   {
    "id": "skoda|Peaq 60 Selection|204 hk|48|10000|29995",
@@ -13786,8 +13739,7 @@
    "link": "https://ww4.skoda.dk/prislister/peaq/leasingpriser/",
    "first_seen": "2026-11-17",
    "prev_monthly": null,
-   "last_changed": "2026-11-17",
-   "stale": true
+   "last_changed": "2026-11-17"
   },
   {
    "id": "skoda|Peaq 90x Selection|299 hk|48|10000|59995",
@@ -13808,8 +13760,7 @@
    "link": "https://ww4.skoda.dk/prislister/peaq/leasingpriser/",
    "first_seen": "2026-11-17",
    "prev_monthly": null,
-   "last_changed": "2026-11-17",
-   "stale": true
+   "last_changed": "2026-11-17"
   },
   {
    "id": "skoda|Peaq 90 Sportline|286 hk|48|10000|59995",
@@ -13830,8 +13781,7 @@
    "link": "https://ww4.skoda.dk/prislister/peaq/leasingpriser/",
    "first_seen": "2026-11-17",
    "prev_monthly": null,
-   "last_changed": "2026-11-17",
-   "stale": true
+   "last_changed": "2026-11-17"
   },
   {
    "id": "skoda|Peaq 90 Selection|286 hk|48|10000|29995",
@@ -13852,8 +13802,7 @@
    "link": "https://ww4.skoda.dk/prislister/peaq/leasingpriser/",
    "first_seen": "2026-11-17",
    "prev_monthly": null,
-   "last_changed": "2026-11-17",
-   "stale": true
+   "last_changed": "2026-11-17"
   },
   {
    "id": "skoda|Peaq 90x Sportline|299 hk|48|10000|59995",
@@ -13874,8 +13823,7 @@
    "link": "https://ww4.skoda.dk/prislister/peaq/leasingpriser/",
    "first_seen": "2026-11-17",
    "prev_monthly": null,
-   "last_changed": "2026-11-17",
-   "stale": true
+   "last_changed": "2026-11-17"
   },
   {
    "id": "skoda|Peaq 90x Selection|299 hk|48|10000|29995",
@@ -13896,8 +13844,7 @@
    "link": "https://ww4.skoda.dk/prislister/peaq/leasingpriser/",
    "first_seen": "2026-11-17",
    "prev_monthly": null,
-   "last_changed": "2026-11-17",
-   "stale": true
+   "last_changed": "2026-11-17"
   },
   {
    "id": "skoda|Peaq 90 Sportline|286 hk|48|10000|29995",
@@ -13918,8 +13865,7 @@
    "link": "https://ww4.skoda.dk/prislister/peaq/leasingpriser/",
    "first_seen": "2026-11-17",
    "prev_monthly": null,
-   "last_changed": "2026-11-17",
-   "stale": true
+   "last_changed": "2026-11-17"
   },
   {
    "id": "skoda|Peaq 90x Sportline|299 hk|48|10000|29995",
@@ -13940,8 +13886,7 @@
    "link": "https://ww4.skoda.dk/prislister/peaq/leasingpriser/",
    "first_seen": "2026-11-17",
    "prev_monthly": null,
-   "last_changed": "2026-11-17",
-   "stale": true
+   "last_changed": "2026-11-17"
   },
   {
    "id": "skoda|Peaq 60 Selection|204 hk|48|15000|29995",
@@ -13962,8 +13907,7 @@
    "link": "https://ww4.skoda.dk/prislister/peaq/leasingpriser/",
    "first_seen": "2026-11-17",
    "prev_monthly": null,
-   "last_changed": "2026-11-17",
-   "stale": true
+   "last_changed": "2026-11-17"
   },
   {
    "id": "skoda|Peaq 90 Selection|286 hk|48|15000|29995",
@@ -13984,8 +13928,7 @@
    "link": "https://ww4.skoda.dk/prislister/peaq/leasingpriser/",
    "first_seen": "2026-11-17",
    "prev_monthly": null,
-   "last_changed": "2026-11-17",
-   "stale": true
+   "last_changed": "2026-11-17"
   },
   {
    "id": "skoda|Peaq 90x Selection|299 hk|48|15000|29995",
@@ -14006,8 +13949,7 @@
    "link": "https://ww4.skoda.dk/prislister/peaq/leasingpriser/",
    "first_seen": "2026-11-17",
    "prev_monthly": null,
-   "last_changed": "2026-11-17",
-   "stale": true
+   "last_changed": "2026-11-17"
   },
   {
    "id": "skoda|Peaq 90 Sportline|286 hk|48|15000|29995",
@@ -14028,8 +13970,7 @@
    "link": "https://ww4.skoda.dk/prislister/peaq/leasingpriser/",
    "first_seen": "2026-11-17",
    "prev_monthly": null,
-   "last_changed": "2026-11-17",
-   "stale": true
+   "last_changed": "2026-11-17"
   },
   {
    "id": "skoda|Peaq 90x Sportline|299 hk|48|15000|29995",
@@ -14050,8 +13991,7 @@
    "link": "https://ww4.skoda.dk/prislister/peaq/leasingpriser/",
    "first_seen": "2026-11-17",
    "prev_monthly": null,
-   "last_changed": "2026-11-17",
-   "stale": true
+   "last_changed": "2026-11-17"
   },
   {
    "id": "skoda|Peaq 60 Selection|204 hk|48|20000|29995",
@@ -14072,8 +14012,7 @@
    "link": "https://ww4.skoda.dk/prislister/peaq/leasingpriser/",
    "first_seen": "2026-11-17",
    "prev_monthly": null,
-   "last_changed": "2026-11-17",
-   "stale": true
+   "last_changed": "2026-11-17"
   },
   {
    "id": "skoda|Peaq 90 Selection|286 hk|48|20000|29995",
@@ -14094,8 +14033,7 @@
    "link": "https://ww4.skoda.dk/prislister/peaq/leasingpriser/",
    "first_seen": "2026-11-17",
    "prev_monthly": null,
-   "last_changed": "2026-11-17",
-   "stale": true
+   "last_changed": "2026-11-17"
   },
   {
    "id": "skoda|Peaq 90x Selection|299 hk|48|20000|29995",
@@ -14116,8 +14054,7 @@
    "link": "https://ww4.skoda.dk/prislister/peaq/leasingpriser/",
    "first_seen": "2026-11-17",
    "prev_monthly": null,
-   "last_changed": "2026-11-17",
-   "stale": true
+   "last_changed": "2026-11-17"
   },
   {
    "id": "skoda|Peaq 90 Sportline|286 hk|48|20000|29995",
@@ -14138,8 +14075,7 @@
    "link": "https://ww4.skoda.dk/prislister/peaq/leasingpriser/",
    "first_seen": "2026-11-17",
    "prev_monthly": null,
-   "last_changed": "2026-11-17",
-   "stale": true
+   "last_changed": "2026-11-17"
   },
   {
    "id": "skoda|Peaq 90x Sportline|299 hk|48|20000|29995",
@@ -14160,8 +14096,7 @@
    "link": "https://ww4.skoda.dk/prislister/peaq/leasingpriser/",
    "first_seen": "2026-11-17",
    "prev_monthly": null,
-   "last_changed": "2026-11-17",
-   "stale": true
+   "last_changed": "2026-11-17"
   },
   {
    "id": "skoda|Peaq 60 Selection|204 hk|48|25000|29995",
@@ -14182,8 +14117,7 @@
    "link": "https://ww4.skoda.dk/prislister/peaq/leasingpriser/",
    "first_seen": "2026-11-17",
    "prev_monthly": null,
-   "last_changed": "2026-11-17",
-   "stale": true
+   "last_changed": "2026-11-17"
   },
   {
    "id": "skoda|Peaq 90 Selection|286 hk|48|25000|29995",
@@ -14204,8 +14138,7 @@
    "link": "https://ww4.skoda.dk/prislister/peaq/leasingpriser/",
    "first_seen": "2026-11-17",
    "prev_monthly": null,
-   "last_changed": "2026-11-17",
-   "stale": true
+   "last_changed": "2026-11-17"
   },
   {
    "id": "skoda|Peaq 90x Selection|299 hk|48|25000|29995",
@@ -14226,8 +14159,7 @@
    "link": "https://ww4.skoda.dk/prislister/peaq/leasingpriser/",
    "first_seen": "2026-11-17",
    "prev_monthly": null,
-   "last_changed": "2026-11-17",
-   "stale": true
+   "last_changed": "2026-11-17"
   },
   {
    "id": "skoda|Peaq 90 Sportline|286 hk|48|25000|29995",
@@ -14248,8 +14180,7 @@
    "link": "https://ww4.skoda.dk/prislister/peaq/leasingpriser/",
    "first_seen": "2026-11-17",
    "prev_monthly": null,
-   "last_changed": "2026-11-17",
-   "stale": true
+   "last_changed": "2026-11-17"
   },
   {
    "id": "skoda|Peaq 90x Sportline|299 hk|48|25000|29995",
@@ -14270,8 +14201,7 @@
    "link": "https://ww4.skoda.dk/prislister/peaq/leasingpriser/",
    "first_seen": "2026-11-17",
    "prev_monthly": null,
-   "last_changed": "2026-11-17",
-   "stale": true
+   "last_changed": "2026-11-17"
   },
   {
    "id": "skoda|Peaq 60 Selection|204 hk|48|25000|59995",
@@ -14292,8 +14222,7 @@
    "link": "https://ww4.skoda.dk/prislister/peaq/leasingpriser/",
    "first_seen": "2026-11-17",
    "prev_monthly": null,
-   "last_changed": "2026-11-17",
-   "stale": true
+   "last_changed": "2026-11-17"
   },
   {
    "id": "skoda|Peaq 90 Selection|286 hk|48|25000|59995",
@@ -14314,30 +14243,7 @@
    "link": "https://ww4.skoda.dk/prislister/peaq/leasingpriser/",
    "first_seen": "2026-11-17",
    "prev_monthly": null,
-   "last_changed": "2026-11-17",
-   "stale": true
-  },
-  {
-   "id": "skoda|Peaq 90x Selection|299 hk|48|25000|59995",
-   "brand": "Škoda",
-   "brand_id": "skoda",
-   "model": "Peaq 90x Selection",
-   "variant": "299 hk",
-   "monthly": 5855,
-   "down": 59995,
-   "months": 48,
-   "km": 25000,
-   "total": 341635,
-   "new_price": 479595,
-   "ratio": 0.7123,
-   "ratio_basis": "faktisk",
-   "ratio_terms": null,
-   "good": false,
-   "link": "https://ww4.skoda.dk/prislister/peaq/leasingpriser/",
-   "first_seen": "2026-11-17",
-   "prev_monthly": null,
-   "last_changed": "2026-11-17",
-   "stale": true
+   "last_changed": "2026-11-17"
   },
   {
    "id": "skoda|Peaq 60 Selection|204 hk|48|15000|59995",
@@ -14358,8 +14264,7 @@
    "link": "https://ww4.skoda.dk/prislister/peaq/leasingpriser/",
    "first_seen": "2026-11-17",
    "prev_monthly": null,
-   "last_changed": "2026-11-17",
-   "stale": true
+   "last_changed": "2026-11-17"
   },
   {
    "id": "skoda|Peaq 90 Selection|286 hk|48|15000|59995",
@@ -14380,8 +14285,7 @@
    "link": "https://ww4.skoda.dk/prislister/peaq/leasingpriser/",
    "first_seen": "2026-11-17",
    "prev_monthly": null,
-   "last_changed": "2026-11-17",
-   "stale": true
+   "last_changed": "2026-11-17"
   },
   {
    "id": "skoda|Peaq 90x Selection|299 hk|48|15000|59995",
@@ -14402,8 +14306,7 @@
    "link": "https://ww4.skoda.dk/prislister/peaq/leasingpriser/",
    "first_seen": "2026-11-17",
    "prev_monthly": null,
-   "last_changed": "2026-11-17",
-   "stale": true
+   "last_changed": "2026-11-17"
   },
   {
    "id": "skoda|Peaq 90 Sportline|286 hk|48|15000|59995",
@@ -14424,8 +14327,7 @@
    "link": "https://ww4.skoda.dk/prislister/peaq/leasingpriser/",
    "first_seen": "2026-11-17",
    "prev_monthly": null,
-   "last_changed": "2026-11-17",
-   "stale": true
+   "last_changed": "2026-11-17"
   },
   {
    "id": "skoda|Peaq 90x Sportline|299 hk|48|15000|59995",
@@ -14446,8 +14348,7 @@
    "link": "https://ww4.skoda.dk/prislister/peaq/leasingpriser/",
    "first_seen": "2026-11-17",
    "prev_monthly": null,
-   "last_changed": "2026-11-17",
-   "stale": true
+   "last_changed": "2026-11-17"
   },
   {
    "id": "skoda|Peaq 60 Selection|204 hk|48|20000|59995",
@@ -14468,8 +14369,7 @@
    "link": "https://ww4.skoda.dk/prislister/peaq/leasingpriser/",
    "first_seen": "2026-11-17",
    "prev_monthly": null,
-   "last_changed": "2026-11-17",
-   "stale": true
+   "last_changed": "2026-11-17"
   },
   {
    "id": "skoda|Peaq 90 Selection|286 hk|48|20000|59995",
@@ -14490,8 +14390,7 @@
    "link": "https://ww4.skoda.dk/prislister/peaq/leasingpriser/",
    "first_seen": "2026-11-17",
    "prev_monthly": null,
-   "last_changed": "2026-11-17",
-   "stale": true
+   "last_changed": "2026-11-17"
   },
   {
    "id": "skoda|Peaq 90x Selection|299 hk|48|20000|59995",
@@ -14512,8 +14411,7 @@
    "link": "https://ww4.skoda.dk/prislister/peaq/leasingpriser/",
    "first_seen": "2026-11-17",
    "prev_monthly": null,
-   "last_changed": "2026-11-17",
-   "stale": true
+   "last_changed": "2026-11-17"
   },
   {
    "id": "skoda|Peaq 90 Sportline|286 hk|48|20000|59995",
@@ -14534,8 +14432,7 @@
    "link": "https://ww4.skoda.dk/prislister/peaq/leasingpriser/",
    "first_seen": "2026-11-17",
    "prev_monthly": null,
-   "last_changed": "2026-11-17",
-   "stale": true
+   "last_changed": "2026-11-17"
   },
   {
    "id": "skoda|Peaq 90x Sportline|299 hk|48|20000|59995",
@@ -14556,8 +14453,28 @@
    "link": "https://ww4.skoda.dk/prislister/peaq/leasingpriser/",
    "first_seen": "2026-11-17",
    "prev_monthly": null,
-   "last_changed": "2026-11-17",
-   "stale": true
+   "last_changed": "2026-11-17"
+  },
+  {
+   "id": "skoda|Peaq 90x Selection|299 hk|48|25000|59995",
+   "brand": "Škoda",
+   "brand_id": "skoda",
+   "model": "Peaq 90x Selection",
+   "variant": "299 hk",
+   "monthly": 5855,
+   "down": 59995,
+   "months": 48,
+   "km": 25000,
+   "total": 341635,
+   "new_price": 479595,
+   "ratio": 0.7123,
+   "ratio_basis": "faktisk",
+   "ratio_terms": null,
+   "good": false,
+   "link": "https://ww4.skoda.dk/prislister/peaq/leasingpriser/",
+   "first_seen": "2026-11-17",
+   "prev_monthly": null,
+   "last_changed": "2026-11-17"
   },
   {
    "id": "skoda|Peaq 90 Sportline|286 hk|48|25000|59995",
@@ -14578,8 +14495,7 @@
    "link": "https://ww4.skoda.dk/prislister/peaq/leasingpriser/",
    "first_seen": "2026-11-17",
    "prev_monthly": null,
-   "last_changed": "2026-11-17",
-   "stale": true
+   "last_changed": "2026-11-17"
   },
   {
    "id": "skoda|Peaq 90x Sportline|299 hk|48|25000|59995",
@@ -14600,8 +14516,7 @@
    "link": "https://ww4.skoda.dk/prislister/peaq/leasingpriser/",
    "first_seen": "2026-11-17",
    "prev_monthly": null,
-   "last_changed": "2026-11-17",
-   "stale": true
+   "last_changed": "2026-11-17"
   },
   {
    "id": "skoda|Scala Selection|1.0 TSI 115 HK DSG|36|10000|14995",
@@ -14622,8 +14537,49 @@
    "link": "https://ww4.skoda.dk/prislister/scala/leasingpriser/",
    "first_seen": "2026-11-17",
    "prev_monthly": null,
-   "last_changed": "2026-11-17",
-   "stale": true
+   "last_changed": "2026-11-17"
+  },
+  {
+   "id": "skoda|Scala Selection|1.0 TSI 115 HK DSG|36|15000|14995",
+   "brand": "Škoda",
+   "brand_id": "skoda",
+   "model": "Scala Selection",
+   "variant": "1.0 TSI 115 HK DSG",
+   "monthly": 3865,
+   "down": 14995,
+   "months": 36,
+   "km": 15000,
+   "total": 154735,
+   "new_price": 292995,
+   "ratio": 0.5281,
+   "ratio_basis": "faktisk",
+   "ratio_terms": null,
+   "good": false,
+   "link": "https://ww4.skoda.dk/prislister/scala/leasingpriser/",
+   "first_seen": "2026-11-18",
+   "prev_monthly": null,
+   "last_changed": "2026-11-18"
+  },
+  {
+   "id": "skoda|Scala Selection|1.0 TSI 115 HK DSG|36|20000|14995",
+   "brand": "Škoda",
+   "brand_id": "skoda",
+   "model": "Scala Selection",
+   "variant": "1.0 TSI 115 HK DSG",
+   "monthly": 4135,
+   "down": 14995,
+   "months": 36,
+   "km": 20000,
+   "total": 164455,
+   "new_price": 292995,
+   "ratio": 0.5613,
+   "ratio_basis": "faktisk",
+   "ratio_terms": null,
+   "good": false,
+   "link": "https://ww4.skoda.dk/prislister/scala/leasingpriser/",
+   "first_seen": "2026-11-18",
+   "prev_monthly": null,
+   "last_changed": "2026-11-18"
   },
   {
    "id": "audi|A2 e-tron|e-tron 140 kW|48|15000|30000",
