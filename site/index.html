@@ -38,8 +38,9 @@ tr.good td{background:var(--good-bg)}
 .up{color:var(--bad)}.down{color:var(--good)}
 td a{color:inherit;font-weight:700;text-underline-offset:3px}
 a:focus-visible,th:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid var(--good);outline-offset:2px}
-.status{margin:-4px 0 16px;color:var(--mute);font-size:13px}
-.status b{color:var(--bad)}
+.status{line-height:1.7;margin:-4px 0 16px;color:var(--mute);font-size:13px}
+.status b{color:var(--ink)}
+.status .bad,.status .bad b{color:var(--bad)}
 .empty{padding:40px 20px;text-align:center;color:var(--mute)}
 .seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--surface)}
 .seg button{font:inherit;color:var(--mute);background:none;border:0;padding:8px 14px;cursor:pointer}
@@ -181,14 +182,23 @@ let tq;$("q").addEventListener("input",()=>{clearTimeout(tq);tq=setTimeout(rende
 $("sort").addEventListener("input",e=>{stack=e.target.value.split(",").map(k=>({k,dir:1}));render()});
 $("moreBtn").addEventListener("click",()=>{limit+=step();draw()});
 if("IntersectionObserver" in window)new IntersectionObserver(es=>{if(es[0].isIntersecting){limit+=step();draw()}},{rootMargin:"600px"}).observe($("more"));
+const hx=t=>String(t).replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
+function statusHtml(d){
+  const st=Object.entries(d.status||{}).map(([k,s])=>({name:k,...s,state:s.state||(s.ok?"ok":(/selectors/.test(s.error||"")?"ikke_sat_op":"fejl"))}));
+  const by=s=>st.filter(x=>x.state===s),L=[];
+  L.push(d.updated?`Sidst opdateret ${new Date(d.updated).toLocaleString("da-DK")}.`:"Ikke opdateret endnu.");
+  const ok=by("ok");if(ok.length)L.push(`<b>Hentet korrekt:</b> ${ok.map(x=>`${hx(x.name)} (${x.count??"?"})`).join(" · ")}`);
+  const part=by("delvist");if(part.length)L.push(`<span class="bad"><b>Delvist hentet:</b> ${part.map(x=>`${hx(x.name)} (${x.count} nye tilbud${x.warnings&&x.warnings.length?`; fejl: ${hx(x.warnings.join("; "))}`:""})`).join(" · ")}</span>`);
+  const bad=by("fejl");if(bad.length)L.push(`<span class="bad"><b>Kunne ikke hentes</b> (viser tidligere data): ${bad.map(x=>`${hx(x.name)} – seneste vellykkede hentning ${x.last_ok?dato(x.last_ok):"ukendt"}${x.carried!=null?`, ${x.carried} tilbud vises`:""}${x.error&&!/selectors/.test(x.error)?`. Årsag: ${hx(x.error)}`:""}`).join("<br>")}</span>`);
+  const nc=by("ikke_sat_op");if(nc.length)L.push(`Ikke sat op endnu: ${nc.map(x=>hx(x.name)).join(", ")}`);
+  return L.join("<br>")}
 fetch("data/offers.json").then(r=>r.json()).then(d=>{
   all=d.offers;all.forEach(enrich);
   fill("km",all.map(o=>o.km),v=>v.toLocaleString("da-DK")+" km");
   fill("down",all.map(o=>o.down),v=>kr(v));
   const ids=[...new Map(all.map(o=>[o.brand_id,o.brand]))].sort((a,b)=>a[1].localeCompare(b[1],"da"));
   $("brand").insertAdjacentHTML("beforeend",ids.map(([i,n])=>`<option value="${i}">${n}</option>`).join(""));
-  const bad=Object.entries(d.status).filter(([,s])=>!s.ok).map(([k])=>k);
-  $("status").innerHTML=(d.updated?`Opdateret ${new Date(d.updated).toLocaleString("da-DK")}. `:"Ikke opdateret endnu. ")+(bad.length?`<b>Kunne ikke hentes:</b> ${bad.join(", ")}`:"");
+  $("status").innerHTML=statusHtml(d);
   render();
 }).catch(()=>{$("status").textContent="Kunne ikke indlæse data/offers.json (åbn siden via en webserver, ikke som fil).";render()});
 </script>
