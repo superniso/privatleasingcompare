@@ -4,6 +4,7 @@ Mærkespecifikke filer (vw.py, audi.py) angiver kun, hvilke sider der skal hente
 import re
 
 TAG = "semler"                   # bruges i loggen, sættes af scrape_site
+WARNINGS = []                    # fejl ved enkeltmodeller (mærket regnes så som 'delvist hentet')
 SKIPPED = {}                     # kort der blev sprunget over i den aktuelle model (navn -> antal)
 LINK_URL = None                  # siden tilbuddene vises på (bruges som link, også hvis kortene ligger i en iframe)
 KMS = [10000, 15000, 20000, 25000, 30000, 40000, 50000, 55000]   # bruges hvis siden ikke oplyser dem
@@ -64,62 +65,67 @@ async def read_cards(page, prices=None):
     rows = []
     await uncheck_insurance(page)
     for card in await page.query_selector_all(".sf-card-auto"):
-        if not await card.is_visible():  # filtrerede/skjulte kort giver forkert tekst
+        try:
+            if not await card.is_visible():  # filtrerede/skjulte kort giver forkert tekst
+                continue
+            title = await card.query_selector(".sf-card-auto-title-item")
+            desc = await card.query_selector(".sf-card-auto-description-item")
+            box = await card.query_selector("input[id^='insuranceCheckbox_']")
+            items = await card.query_selector_all(".sf-card-auto-financing-details-wrapper-item")
+            if not (title and items):  # forsikrings-afkrydsningen (box) mangler på nogle kort
+                continue
+            f = {}
+            for it in items:
+                s = await it.query_selector(".sf-card-auto-financing-details-wrapper-item-subject")
+                d = await it.query_selector(".sf-card-auto-financing-details-wrapper-item-description")
+                if s and d:
+                    f[(await s.inner_text()).strip()] = (await d.inner_text()).strip()
+            if "Leasingperiode" not in f:
+                continue
+            monthly_key = next((k for k in f if k.startswith(("Månedlig ydelse", "Mdl. ydelse"))), None)
+            ins_key = next((k for k in f if "forsikring" in k.lower() and not k.startswith(("Månedlig ydelse", "Mdl. ydelse"))), None)
+            ins = digits(f[ins_key]) if ins_key else 0
+            incl = bool(monthly_key) and "inkl" in monthly_key
+            if incl and box and ins == 0 and not await box.is_checked():
+                incl = False  # begge ydelsesnavne er i kortet, men forsikringen er fra (0 kr.): ydelsen er uden forsikring
+            if not monthly_key or incl:
+                # kan ikke aflæses uden forsikring: spring kortet over i stedet for at stoppe hele mærket
+                name = (await title.inner_text()).strip()
+                if name not in SKIPPED:  # diagnose én gang pr. kort
+                    print(f"[{TAG}] springer kort over: {name!r}. {await card.evaluate(DIAG_CARD_JS)}")
+                SKIPPED[name] = SKIPPED.get(name, 0) + 1
+                continue
+            # Nypris står kun i checkbox-id'et. Mangler den, udfyldes nypris via new_prices.yaml
+            new_price, down_id = ("", "")
+            if box:
+                _, new_price, down_id = (await box.get_attribute("id")).split("_")
+            shown = digits(f.get("Førstegangsydelse", ""))
+            down = str(shown) if shown else down_id
+            text = await card.inner_text()
+            if not new_price and prices:  # kort uden forsikrings-afkrydsning: slå nyprisen op i prisboksene
+                t = " ".join((await title.inner_text()).split())
+                d = " ".join((await desc.inner_text()).split()) if desc else ""
+                # kun præcist match på titel + variant (titel alene bruges kun, hvis kortet ikke har nogen variant)
+                new_price = str(prices.get((t, d)) or (prices.get((t, "")) if not d else None) or "")
+            # engangsgebyrer i betingelserne: afleveringsgebyr og (hos Audi) stiftelsesomkostninger
+            fee = sum(digits(m.group(1)) for m in re.finditer(r"(?:Afleveringsgebyr|Stiftelsesomkostninger):?\s*([\d.]+)", text))
+            row = {
+                "down_id": down_id,
+                "model": (await title.inner_text()).strip(),
+                "variant": (await desc.inner_text()).strip() if desc else "",
+                "monthly": f[monthly_key], "down": down, "months": f["Leasingperiode"],
+                "km": f.get("Km pr. år", ""), "new_price": new_price,
+                "fee": str(fee),
+                "link": (LINK_URL or page.url).split("#")[0],  # modellens privatleasing-side (kilden til priserne)
+            }
+            calc = digits(row["down"]) + digits(row["monthly"]) * digits(row["months"]) + digits(row["fee"])
+            if "Totalomkostninger" in f and calc != digits(f["Totalomkostninger"]):
+                print(f"[{TAG}] ADVARSEL {row['model']} {row['variant']}: beregnet {calc} != side {f['Totalomkostninger']}")
+            rows.append(row)
+        except Exception as e:  # ét kort der fejler (fx fordi siden opdaterer) må ikke tage hele mærket med
+            key = "fejl: " + (str(e).splitlines() or [repr(e)])[0][:70]
+            SKIPPED[key] = SKIPPED.get(key, 0) + 1
             continue
-        title = await card.query_selector(".sf-card-auto-title-item")
-        desc = await card.query_selector(".sf-card-auto-description-item")
-        box = await card.query_selector("input[id^='insuranceCheckbox_']")
-        items = await card.query_selector_all(".sf-card-auto-financing-details-wrapper-item")
-        if not (title and items):  # forsikrings-afkrydsningen (box) mangler på nogle kort
-            continue
-        f = {}
-        for it in items:
-            s = await it.query_selector(".sf-card-auto-financing-details-wrapper-item-subject")
-            d = await it.query_selector(".sf-card-auto-financing-details-wrapper-item-description")
-            if s and d:
-                f[(await s.inner_text()).strip()] = (await d.inner_text()).strip()
-        if "Leasingperiode" not in f:
-            continue
-        monthly_key = next((k for k in f if k.startswith(("Månedlig ydelse", "Mdl. ydelse"))), None)
-        ins_key = next((k for k in f if "forsikring" in k.lower() and not k.startswith(("Månedlig ydelse", "Mdl. ydelse"))), None)
-        ins = digits(f[ins_key]) if ins_key else 0
-        incl = bool(monthly_key) and "inkl" in monthly_key
-        if incl and box and ins == 0 and not await box.is_checked():
-            incl = False  # begge ydelsesnavne er i kortet, men forsikringen er fra (0 kr.): ydelsen er uden forsikring
-        if not monthly_key or incl:
-            # kan ikke aflæses uden forsikring: spring kortet over i stedet for at stoppe hele mærket
-            name = (await title.inner_text()).strip()
-            if name not in SKIPPED:  # diagnose én gang pr. kort
-                print(f"[{TAG}] springer kort over: {name!r}. {await card.evaluate(DIAG_CARD_JS)}")
-            SKIPPED[name] = SKIPPED.get(name, 0) + 1
-            continue
-        # Nypris står kun i checkbox-id'et. Mangler den, udfyldes nypris via new_prices.yaml
-        new_price, down_id = ("", "")
-        if box:
-            _, new_price, down_id = (await box.get_attribute("id")).split("_")
-        shown = digits(f.get("Førstegangsydelse", ""))
-        down = str(shown) if shown else down_id
-        text = await card.inner_text()
-        if not new_price and prices:  # kort uden forsikrings-afkrydsning: slå nyprisen op i prisboksene
-            t = " ".join((await title.inner_text()).split())
-            d = " ".join((await desc.inner_text()).split()) if desc else ""
-            # kun præcist match på titel + variant (titel alene bruges kun, hvis kortet ikke har nogen variant)
-            new_price = str(prices.get((t, d)) or (prices.get((t, "")) if not d else None) or "")
-        # engangsgebyrer i betingelserne: afleveringsgebyr og (hos Audi) stiftelsesomkostninger
-        fee = sum(digits(m.group(1)) for m in re.finditer(r"(?:Afleveringsgebyr|Stiftelsesomkostninger):?\s*([\d.]+)", text))
-        row = {
-            "down_id": down_id,
-            "model": (await title.inner_text()).strip(),
-            "variant": (await desc.inner_text()).strip() if desc else "",
-            "monthly": f[monthly_key], "down": down, "months": f["Leasingperiode"],
-            "km": f.get("Km pr. år", ""), "new_price": new_price,
-            "fee": str(fee),
-            "link": (LINK_URL or page.url).split("#")[0],  # modellens privatleasing-side (kilden til priserne)
-        }
-        calc = digits(row["down"]) + digits(row["monthly"]) * digits(row["months"]) + digits(row["fee"])
-        if "Totalomkostninger" in f and calc != digits(f["Totalomkostninger"]):
-            print(f"[{TAG}] ADVARSEL {row['model']} {row['variant']}: beregnet {calc} != side {f['Totalomkostninger']}")
-        rows.append(row)
     return rows
 
 
@@ -315,46 +321,59 @@ def fill_prices(rows):
                 r["new_price"] = next(iter(v))
 
 
+async def scrape_one(page, item, seen, out):
+    global LINK_URL
+    name, url = item[:2]
+    price_url = item[2] if len(item) > 2 else None  # valgfri side med 'Vejledende pris' for modellen
+    extra = {}
+    if price_url:
+        try:
+            await page.goto(price_url, wait_until="networkidle", timeout=45000)
+        except Exception:
+            pass
+        try:
+            await page.wait_for_selector(".sf-card-auto-pricing-details-item", timeout=15000)
+            extra = await list_prices(page)
+            print(f"[{TAG}] {name}: {len({k for k in extra if k[1]})} vejledende priser fundet på prissiden")
+        except Exception:
+            print(f"[{TAG}] {name}: ingen priser fundet på {price_url}")
+    try:
+        await page.goto(url, wait_until="networkidle", timeout=45000)
+    except Exception:
+        pass  # networkidle kan time ud på sider med løbende sporing; vi venter på kortene i stedet
+    frame = await locate_cards(page)
+    if not frame:
+        await diagnose_frames(page)
+        raise RuntimeError(f"ingen leasingkort på {url} (sidetitel: {await page.title()!r})")
+    LINK_URL = url
+    before = len(out)
+    downs, kms, combos = await scrape_model(frame, seen, out, extra)
+    fill_prices(out[before:])
+    missing = sorted({f"{r['model']} {r['variant']}" for r in out[before:] if not r["new_price"]})
+    if missing:
+        print(f"[{TAG}] {name}: nypris mangler for {missing} - læg dem i new_prices.yaml")
+    if SKIPPED:
+        print(f"[{TAG}] {name}: sprang kortaflæsninger over (kort: antal): {dict(SKIPPED)}")
+        SKIPPED.clear()
+    print(f"[{TAG}] {name}: {len(out) - before} tilbud, {len(combos)} af {max(1, len(downs)) * max(1, len(kms))} kombinationer "
+          f"(udbetaling {downs or 'intet filter'}, km {kms or 'intet filter'})")
+
+
 async def scrape_site(page, tag, urls):
-    """urls: async funktion der returnerer [(navn, url), ...]."""
-    global TAG, LINK_URL
+    """urls: async funktion der returnerer [(navn, url[, prisside]), ...]. Fejler en model, fortsætter de øvrige."""
+    global TAG
     TAG = tag
+    WARNINGS.clear()
+    SKIPPED.clear()
     seen, out = {}, []
     for item in await urls(page):
-        name, url = item[:2]
-        price_url = item[2] if len(item) > 2 else None  # valgfri side med 'Vejledende pris' for modellen
-        extra = {}
-        if price_url:
-            try:
-                await page.goto(price_url, wait_until="networkidle", timeout=45000)
-            except Exception:
-                pass
-            try:
-                await page.wait_for_selector(".sf-card-auto-pricing-details-item", timeout=15000)
-                extra = await list_prices(page)
-                print(f"[{TAG}] {name}: {len({k for k in extra if k[1]})} vejledende priser fundet på prissiden")
-            except Exception:
-                print(f"[{TAG}] {name}: ingen priser fundet på {price_url}")
         try:
-            await page.goto(url, wait_until="networkidle", timeout=45000)
-        except Exception:
-            pass  # networkidle kan time ud på sider med løbende sporing; vi venter på kortene i stedet
-        frame = await locate_cards(page)
-        if not frame:
-            await diagnose_frames(page)
-            raise RuntimeError(f"ingen leasingkort på {url} (sidetitel: {await page.title()!r})")
-        LINK_URL = url
-        before = len(out)
-        downs, kms, combos = await scrape_model(frame, seen, out, extra)
-        fill_prices(out[before:])
-        missing = sorted({f"{r['model']} {r['variant']}" for r in out[before:] if not r["new_price"]})
-        if missing:
-            print(f"[{TAG}] {name}: nypris mangler for {missing} - læg dem i new_prices.yaml")
-        if SKIPPED:
-            print(f"[{TAG}] {name}: sprang kortaflæsninger over (kort: antal): {dict(SKIPPED)}")
+            await scrape_one(page, item, seen, out)
+        except Exception as e:
+            msg = f"{item[0]}: {(str(e).splitlines() or [repr(e)])[0][:150]}"
+            print(f"[{TAG}] FEJL ved model {msg}")
+            WARNINGS.append(msg)
             SKIPPED.clear()
-        print(f"[{TAG}] {name}: {len(out) - before} tilbud, {len(combos)} af {max(1, len(downs)) * max(1, len(kms))} kombinationer "
-              f"(udbetaling {downs or 'intet filter'}, km {kms or 'intet filter'})")
     if not out:
-        raise RuntimeError("ingen leasingtilbud fundet")
+        raise RuntimeError("ingen leasingtilbud fundet" + (f" ({'; '.join(WARNINGS)})" if WARNINGS else ""))
     return out
