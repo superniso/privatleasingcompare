@@ -4,6 +4,7 @@ Mærkespecifikke filer (vw.py, audi.py) angiver kun, hvilke sider der skal hente
 import re
 
 TAG = "semler"                   # bruges i loggen, sættes af scrape_site
+SKIPPED = {}                     # kort der blev sprunget over i den aktuelle model (navn -> antal)
 LINK_URL = None                  # siden tilbuddene vises på (bruges som link, også hvis kortene ligger i en iframe)
 KMS = [10000, 15000, 20000, 25000, 30000, 40000, 50000, 55000]   # bruges hvis siden ikke oplyser dem
 DOWNS = [20000, 45000]
@@ -42,8 +43,21 @@ async def uncheck_insurance(page):
       document.querySelectorAll("input[id^='insuranceCheckbox_']").forEach(e => { if (e.checked) { e.click(); n++; } });
       return n; }""")
     if n:
-        await page.wait_for_timeout(500)  # lad priserne opdatere
+        await page.wait_for_timeout(800)  # lad priserne opdatere
     return n
+
+
+DIAG_CARD_JS = """c => {
+  const rows = [...c.querySelectorAll('.sf-card-auto-financing-details-wrapper-item')];
+  const isM = i => /^(Månedlig|Mdl)/i.test(i.textContent.trim());
+  const it = rows.find(isM);
+  const sub = it && it.querySelector('.sf-card-auto-financing-details-wrapper-item-subject');
+  const box = c.querySelector("input[id^='insuranceCheckbox_']");
+  return {afkrydsning: box ? (box.checked ? 'afkrydset' : 'ikke afkrydset') : 'findes ikke',
+          ydelsesnavn_html: sub ? sub.innerHTML.slice(0, 250) : null,
+          forsikringsraekker: rows.filter(i => /forsikring/i.test(i.textContent) && !isM(i))
+                                  .map(i => i.textContent.replace(/\\s+/g, ' ').trim())};
+}"""
 
 
 async def read_cards(page, prices=None):
@@ -67,10 +81,17 @@ async def read_cards(page, prices=None):
         if "Leasingperiode" not in f:
             continue
         monthly_key = next((k for k in f if k.startswith(("Månedlig ydelse", "Mdl. ydelse"))), None)
-        if not monthly_key or "inkl" in monthly_key:
+        ins_key = next((k for k in f if "forsikring" in k.lower() and not k.startswith(("Månedlig ydelse", "Mdl. ydelse"))), None)
+        ins = digits(f[ins_key]) if ins_key else 0
+        incl = bool(monthly_key) and "inkl" in monthly_key
+        if incl and box and ins == 0 and not await box.is_checked():
+            incl = False  # begge ydelsesnavne er i kortet, men forsikringen er fra (0 kr.): ydelsen er uden forsikring
+        if not monthly_key or incl:
             # kan ikke aflæses uden forsikring: spring kortet over i stedet for at stoppe hele mærket
-            print(f"[{TAG}] springer kort over (ydelse inkl. forsikring kunne ikke fjernes): "
-                  f"{(await title.inner_text()).strip()!r}, felter: {list(f)}")
+            name = (await title.inner_text()).strip()
+            if name not in SKIPPED:  # diagnose én gang pr. kort
+                print(f"[{TAG}] springer kort over: {name!r}. {await card.evaluate(DIAG_CARD_JS)}")
+            SKIPPED[name] = SKIPPED.get(name, 0) + 1
             continue
         # Nypris står kun i checkbox-id'et. Mangler den, udfyldes nypris via new_prices.yaml
         new_price, down_id = ("", "")
@@ -192,24 +213,30 @@ async def scrape_model(page, seen, out, extra_prices=None):
             combos.add((digits(r["down"]), digits(r["km"])))
 
     await collect()  # standardvisning først
-    downs = await options(page, "downPayment", DOWNS)
-    kms = await options(page, "annualKm", KMS)
+    downs = await options(page, "downPayment", [])  # tom liste = siden har intet filter (ét tilbud pr. kort)
+    kms = await options(page, "annualKm", [])
     worked = False
-    for d in downs:
-        res = await set_radio(page, "downPayment", d)
-        if res == "mangler":
-            print(f"[{TAG}] radioknappen downPayment_{d} findes ikke"); continue
-        if res == "fejl" and not worked:
-            break  # mekanismen virker ikke på denne side - spar tid
-        if res != "ok":
-            continue
-        worked = True
-        snaps.append((d, [(r["variant"], r["down"], r["down_id"], r["monthly"]) for r in await read_cards(page, prices)]))
-        for k in kms:
-            res = await set_radio(page, "annualKm", k)
-            if res == "ok":
-                await collect()
-    if len(combos) < len(downs) * len(kms):  # ufuldstændig: vis hvad siden faktisk viste
+    for d in (downs or [None]):
+        if d is not None:
+            res = await set_radio(page, "downPayment", d)
+            if res == "mangler":
+                print(f"[{TAG}] radioknappen downPayment_{d} findes ikke"); continue
+            if res == "fejl" and not worked:
+                break  # mekanismen virker ikke på denne side - spar tid
+            if res != "ok":
+                continue
+            worked = True
+            snaps.append((d, [(r["variant"], r["down"], r["down_id"], r["monthly"]) for r in await read_cards(page, prices)]))
+        for k in (kms or [None]):
+            if k is not None:
+                if await set_radio(page, "annualKm", k) != "ok":
+                    continue
+            await collect()
+    if downs and kms:
+        extras = combos - {(d, k) for d in downs for k in kms}
+        if extras:
+            print(f"[{TAG}] kombinationer uden for filtrene (udbetaling, km): {sorted(extras)}")
+    if len(combos) < max(1, len(downs)) * max(1, len(kms)):  # ufuldstændig: vis hvad siden faktisk viste
         for d, rows in snaps:
             print(f"[{TAG}] ved udbetaling {d} ses {len(rows)} kort (variant, vist, id, ydelse): {rows}")
     return downs, kms, combos
@@ -323,8 +350,11 @@ async def scrape_site(page, tag, urls):
         missing = sorted({f"{r['model']} {r['variant']}" for r in out[before:] if not r["new_price"]})
         if missing:
             print(f"[{TAG}] {name}: nypris mangler for {missing} - læg dem i new_prices.yaml")
-        print(f"[{TAG}] {name}: {len(out) - before} tilbud, {len(combos)} af {len(downs) * len(kms)} kombinationer "
-              f"(udbetaling {downs}, km {kms})")
+        if SKIPPED:
+            print(f"[{TAG}] {name}: sprang kortaflæsninger over (kort: antal): {dict(SKIPPED)}")
+            SKIPPED.clear()
+        print(f"[{TAG}] {name}: {len(out) - before} tilbud, {len(combos)} af {max(1, len(downs)) * max(1, len(kms))} kombinationer "
+              f"(udbetaling {downs or 'intet filter'}, km {kms or 'intet filter'})")
     if not out:
         raise RuntimeError("ingen leasingtilbud fundet")
     return out
