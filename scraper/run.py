@@ -4,6 +4,13 @@ from email.message import EmailMessage
 import yaml
 from playwright.async_api import async_playwright
 
+sys.stdout.reconfigure(line_buffering=True)  # log og fejl i den rækkefølge, de sker
+
+
+class NotConfigured(RuntimeError):
+    pass
+
+
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 DATA = ROOT / "site" / "data"
 NORM_BELOW = 36        # aftaler kortere end dette (fx 12 mdr.) omregnes
@@ -42,10 +49,11 @@ async def scrape_brand(browser, b, cfg):
         if custom.exists():
             spec = importlib.util.spec_from_file_location(b["id"], custom)
             mod = importlib.util.module_from_spec(spec); spec.loader.exec_module(mod)
-            return await mod.scrape(page)
+            rows = await mod.scrape(page)
+            return rows, list(getattr(getattr(mod, "S", None), "WARNINGS", []))  # advarsler fra delte scraper
         if "TODO" in (b["card"], *b["fields"].values()):
-            raise RuntimeError("selectors er ikke udfyldt endnu")
-        return await generic(page, b, cfg)
+            raise NotConfigured("selectors er ikke udfyldt endnu")
+        return await generic(page, b, cfg), []
     finally:
         await page.close()
 
@@ -114,13 +122,26 @@ async def main():
         browser = await p.chromium.launch()
         for b in cfg["brands"]:
             try:
-                got = build(b, await scrape_brand(browser, b, cfg), cfg, new_prices)
+                raw, warns = await scrape_brand(browser, b, cfg)
+                got = build(b, raw, cfg, new_prices)
+                if warns:  # delvist: behold tidligere tilbud, der ikke blev set denne gang
+                    seen_ids = {g["id"] for g in got}
+                    got += [{**o, "stale": True} for o in old["offers"] if o["brand_id"] == b["id"] and o["id"] not in seen_ids]
                 offers += got
-                status[b["id"]] = {"ok": True, "count": len(got)}
-            except Exception as e:  # behold gårsdagens data for mærker der fejler
-                offers += [{**o, "stale": True} for o in old["offers"] if o["brand_id"] == b["id"]]
-                status[b["id"]] = {"ok": False, "error": str(e)[:200]}
-                print(f"[{b['id']}] {e}", file=sys.stderr)
+                fresh = sum(1 for g in got if not g.get("stale"))
+                status[b["id"]] = {"name": b["name"], "state": "delvist" if warns else "ok", "ok": True,
+                                   "count": fresh, "warnings": warns[:5]}
+                print(f"[{b['id']}] {'DELVIST' if warns else 'OK'}: {fresh} tilbud hentet"
+                      + (f", {len(got) - fresh} beholdt fra tidligere kørsler" if len(got) > fresh else ""))
+            except NotConfigured:
+                status[b["id"]] = {"name": b["name"], "state": "ikke_sat_op", "ok": False}
+                print(f"[{b['id']}] ikke sat op endnu")
+            except Exception as e:  # behold tidligere data for mærker der fejler
+                carried = [{**o, "stale": True} for o in old["offers"] if o["brand_id"] == b["id"]]
+                offers += carried
+                err = (str(e) or repr(e))[:300]
+                status[b["id"]] = {"name": b["name"], "state": "fejl", "ok": False, "error": err, "carried": len(carried)}
+                print(f"[{b['id']}] FEJL: {err} - beholder {len(carried)} tilbud fra tidligere kørsler")
         await browser.close()
 
     changes = []
@@ -161,6 +182,18 @@ async def main():
                 lc = b[0]
         o["last_changed"] = lc
     hist_path.write_text(json.dumps(hist, ensure_ascii=False))
+    for bid, st in status.items():  # hvornår blev mærket senest hentet korrekt?
+        if st["state"] in ("ok", "delvist"):
+            st["last_ok"] = today
+        elif st["state"] == "fejl":
+            dates = [h.get("last_seen") for h in hist.values() if isinstance(h, dict) and h.get("brand_id") == bid and h.get("last_seen")]
+            st["last_ok"] = max(dates) if dates else (old.get("status", {}).get(bid) or {}).get("last_ok")
+    print("\n=== Resultat pr. mærke ===")
+    for bid, st in status.items():
+        txt = {"ok": f"OK, {st.get('count')} tilbud", "delvist": f"DELVIST, {st.get('count')} tilbud (fejl: {'; '.join(st.get('warnings', []))})",
+               "fejl": f"FEJL: {st.get('error')} (seneste vellykkede hentning: {st.get('last_ok') or 'ukendt'}, {st.get('carried', 0)} tilbud vises)",
+               "ikke_sat_op": "ikke sat op endnu"}[st["state"]]
+        print(f"  {st['name']}: {txt}")
     DATA.mkdir(parents=True, exist_ok=True)
     (DATA / "offers.json").write_text(json.dumps({
         "updated": dt.datetime.now(dt.timezone.utc).isoformat(timespec="minutes"),
