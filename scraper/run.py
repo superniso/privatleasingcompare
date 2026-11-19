@@ -152,6 +152,10 @@ async def main():
         o["first_seen"] = prev["first_seen"] if prev else dt.date.today().isoformat()
         o["prev_monthly"] = prev["monthly"] if prev and prev["monthly"] != o["monthly"] else (prev or {}).get("prev_monthly")
 
+    now_iso = dt.datetime.now(dt.timezone.utc).isoformat(timespec="minutes")
+    for o in offers:  # tilbud hentet i denne kørsel får tidsstempel; beholdte tilbud (stale) bevarer deres gamle
+        if not o.get("stale"):
+            o["fetched"] = now_iso
     # Prishistorik: én post pr. bil/konfiguration. En ny pris tilføjes, den gamle bliver stående.
     DATA.mkdir(parents=True, exist_ok=True)
     hist_path = DATA / "history.json"
@@ -200,7 +204,8 @@ async def main():
         "status": status, "offers": offers}, ensure_ascii=False, indent=1))
     if changes:
         send_mail(changes)
-    print(f"{len(offers)} tilbud, {len(changes)} prisændringer")
+    fresh = sum(1 for o in offers if not o.get("stale"))
+    print(f"{len(offers)} tilbud: {fresh} hentet i denne kørsel, {len(offers) - fresh} beholdt fra tidligere kørsler. {len(changes)} prisændringer")
 
 
 asyncio.run(main())
