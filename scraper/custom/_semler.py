@@ -167,12 +167,12 @@ async def options(page, group, fallback):
     return sorted(set(vals)) or fallback  # 0 er en gyldig værdi (fx 0 kr. i udbetaling)
 
 
-async def set_radio(page, group, value):
+async def set_radio(page, group, value, fast=False):
     """Vælger radioknappen <group>_<value>. Returnerer 'ok', 'mangler' eller 'fejl'."""
     rid, field, want = f"{group}_{value}", FIELDS[group], str(value)
     if not await page.evaluate("id => !!document.getElementById(id)", rid):
         return "mangler"
-    for name, js in HOWS:
+    for name, js in (HOWS[:2] if fast else HOWS):  # fast: færre forsøg og ingen diagnose, når et valg kan mangle med vilje
         try:
             if js:
                 await page.evaluate(js, rid)
@@ -180,12 +180,13 @@ async def set_radio(page, group, value):
                 await page.locator(f"label[for='{rid}']").click(force=True, timeout=3000)
             else:
                 await page.locator(f"#{rid}").check(force=True, timeout=3000)
-            await page.wait_for_function(WAIT_JS, arg=[field, want], timeout=4000)
+            await page.wait_for_function(WAIT_JS, arg=[field, want], timeout=2500 if fast else 4000)
             await page.wait_for_timeout(600)  # lad resten af kortene nå at opdatere
             return "ok"
         except Exception:
             continue
-    print(f"[{TAG}] kunne ikke vælge {rid}. Status: {await page.evaluate(DIAG_JS, [rid, field])}")
+    if not fast:
+        print(f"[{TAG}] kunne ikke vælge {rid}. Status: {await page.evaluate(DIAG_JS, [rid, field])}")
     return "fejl"
 
 
@@ -220,40 +221,69 @@ async def scrape_model(page, seen, out, extra_prices=None):
 
     await collect()  # standardvisning først
     lengths = await options(page, "contractLength", [])  # tom liste = siden har intet filter for den dimension
-    all_downs, all_kms, grid, expected, worked = set(), set(), set(), 0, False
+    all_downs, all_kms, grid, worked = set(), set(), set(), False
+    expected = 0
+
+    async def km_pass(L, d, fast=False):
+        """Læser alle kort for hvert km-trin i den aktuelle tilstand (d = valgt udbetaling, None = urørt)."""
+        nonlocal expected
+        kms = await options(page, "annualKm", [])
+        expected += len(kms or [None])
+        first = True
+        for k in (kms or [None]):
+            if k is not None:
+                res = await set_radio(page, "annualKm", k, fast)
+                if res == "fejl":
+                    break  # siden reagerer ikke på km-valg i den aktuelle tilstand
+                if res != "ok":
+                    continue
+            rows = await collect()
+            grid.add((d, k)); all_downs.add(d); all_kms.add(k)
+            if first:  # lille øjebliksbillede til fejlsøgning
+                snaps.append((L, d, [(r["variant"], r["down"], r["down_id"], r["monthly"]) for r in rows])); first = False
+
+    async def pick_length(L):
+        nonlocal worked
+        res = await set_radio(page, "contractLength", L)
+        if res == "mangler":
+            print(f"[{TAG}] radioknappen contractLength_{L} findes ikke")
+        worked = worked or res == "ok"
+        return res
+
+    if lengths:
+        # Fase 1: pr. leasingperiode med udbetalingsfilteret urørt. Siden viser så alle tilbud for det valgte km.
+        for L in lengths:
+            if await pick_length(L) == "ok":
+                await km_pass(L, None)
+    # Fase 2: udbetalinger (ved flere leasingperioder kun dem, der endnu ikke er set)
     for L in (lengths or [None]):
-        if L is not None:
-            res = await set_radio(page, "contractLength", L)
-            if res == "mangler":
-                print(f"[{TAG}] radioknappen contractLength_{L} findes ikke")
-            if res == "fejl" and not worked:
-                break  # mekanismen virker ikke på denne side - spar tid
-            if res != "ok":
-                continue
-            worked = True
-        downs = await options(page, "downPayment", [])  # kan afhænge af den valgte leasingperiode
-        for d in (downs or [None]):
+        if L is not None and await pick_length(L) != "ok":
+            continue
+        downs = await options(page, "downPayment", [])
+        if lengths:
+            seen_here = {dn for (m, dn, _) in combos if m == L}
+            todo = [d for d in downs if d not in seen_here]
+        else:
+            todo = downs or [None]  # tom liste = siden har intet udbetalingsfilter
+        for d in todo:
             if d is not None:
-                res = await set_radio(page, "downPayment", d)
+                res = await set_radio(page, "downPayment", d, fast=bool(lengths))
                 if res == "mangler":
                     print(f"[{TAG}] radioknappen downPayment_{d} findes ikke"); continue
-                if res == "fejl" and not worked:
-                    break
+                if res == "fejl" and not worked and not lengths:
+                    break  # mekanismen virker ikke på denne side - spar tid
                 if res != "ok":
                     continue
                 worked = True
-            kms = await options(page, "annualKm", [])
-            expected += len(kms or [None])
-            first = True
-            for k in (kms or [None]):
-                if k is not None and await set_radio(page, "annualKm", k) != "ok":
-                    continue
-                rows = await collect()
-                grid.add((d, k)); all_downs.add(d); all_kms.add(k)
-                if first:  # lille øjebliksbillede til fejlsøgning
-                    snaps.append((L, d, [(r["variant"], r["down"], r["down_id"], r["monthly"]) for r in rows])); first = False
+            await km_pass(L, d, fast=bool(lengths) and d is not None)
     all_downs.discard(None); all_kms.discard(None)
-    if all_downs and all_kms:
+    if lengths:
+        per = {}
+        for (m, _, _) in combos:
+            per[m] = per.get(m, 0) + 1
+        print(f"[{TAG}] kombinationer pr. løbetid (mdr.: antal): {dict(sorted(per.items()))}")
+        expected = len(combos)  # antal kombinationer pr. løbetid kan ikke udledes af filtrene
+    elif all_downs and all_kms:
         extras = {(dn, km) for (_, dn, km) in combos} - grid
         if extras:
             print(f"[{TAG}] kombinationer uden for filtrene (udbetaling, km): {sorted(extras)}")
