@@ -145,8 +145,8 @@ let view=(()=>{try{return localStorage.getItem("view")}catch(e){return null}})()
 const hue=o=>[...o.brand_id].reduce((a,c)=>(a+c.charCodeAt(0)*37)%360,0);
 const chg=o=>{const d=o.prev_monthly!=null?o.monthly-o.prev_monthly:0;return d?`<small class="${d>0?"up":"down"}">${d>0?"▲":"▼"} ${Math.abs(d).toLocaleString("da-DK")}</small>`:""};
 function tile(o){const w=o.ratio==null?0:Math.min(o.ratio,1)*100;
-  return `<article class="card${o.good?" good":""}" style="--h:${hue(o)}">
-  <header><span class="brand">${o.brand}</span>${tier(o.ratio)==="t2"?`<span class="rib">★ Rigtig godt tilbud</span>`:tier(o.ratio)==="t1"?`<span class="rib ok">Fornuftigt tilbud</span>`:""}<h3>${o.model}</h3><p>${o.variant||"&nbsp;"}</p></header>
+  return `<article class="card${is36(o)?" good":""}" style="--h:${hue(o)}">
+  <header><span class="brand">${o.brand}</span>${tier(o.r36)==="t2"?`<span class="rib" title="Andel af nypris pr. 36 mdr. er højst 45 %">★ Rigtig godt tilbud</span>`:tier(o.r36)==="t1"?`<span class="rib ok" title="Andel af nypris pr. 36 mdr. er under 50 %">Fornuftigt tilbud</span>`:""}<h3>${o.model}</h3><p>${o.variant||"&nbsp;"}</p></header>
   <div class="price"><b>${o.monthly.toLocaleString("da-DK")}</b><span>kr./md.</span>${chg(o)}</div>
   <dl><div><dt>Udbetaling</dt><dd>${kr(o.down)}</dd></div><div><dt>Km pr. år</dt><dd>${o.km.toLocaleString("da-DK")}</dd></div><div><dt>Løbetid</dt><dd>${o.months} mdr.</dd></div><div><dt>Samlet</dt><dd>${kr(o.total)}</dd></div><div><dt>Samlet 12 mdr.</dt><dd>${kr(o.t12)}</dd></div><div><dt>Nypris fra</dt><dd>${kr(o.new_price)}</dd></div></dl>
   <div class="meter"><div class="mh"><span title="${esc(TIP_R)}">Andel af nypris</span>${pill(o)}</div><div class="bar2"><i class="${tier(o.ratio)}" style="width:${w}%"></i><u></u></div></div>
@@ -165,7 +165,7 @@ function draw(){
   $("body").innerHTML=r.length?r.slice(0,limit).map(o=>{
     const d=o.prev_monthly!=null?o.monthly-o.prev_monthly:0;
     const ch=d?` <small class="${d>0?"up":"down"}">${d>0?"▲":"▼"} ${Math.abs(d).toLocaleString("da-DK")}</small>`:"";
-    return `<tr class="${o.good?"good":""}"><td>${o.brand}</td><td><a href="${o.link}" target="_blank" rel="noopener" title="Åbn privatleasing-siden hos forhandleren">${o.model} ↗</a> ${o.variant||""}</td>
+    return `<tr class="${is36(o)?"good":""}"><td>${o.brand}</td><td><a href="${o.link}" target="_blank" rel="noopener" title="Åbn privatleasing-siden hos forhandleren">${o.model} ↗</a> ${o.variant||""}</td>
     <td>${kr(o.monthly)}${ch}</td><td>${kr(o.down)}</td><td>${o.months}</td><td>${o.km.toLocaleString("da-DK")}</td>
     <td>${kr(o.total)}</td><td>${kr(o.new_price)}</td><td>${pill(o)}</td><td>${pill36(o)}</td><td>${kr(o.t12)}</td><td>${p12(o)}</td><td>${dato(o.last_changed||o.first_seen)}</td></tr>`}).join("")
   :`<tr><td colspan="13" class="empty">Ingen tilbud matcher dine filtre.</td></tr>`;
