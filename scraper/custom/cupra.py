@@ -14,24 +14,14 @@ PRICE_BASE = "https://www.cupra.dk/prisliste"   # vejledende priser; fx /prislis
 CARD = ".card-model-leasing-list-item"
 digits = S.digits
 
-SUMMARY_JS = r"""() => {
-  const root = document.querySelector('.configuration-sticky-wrapper') || document;
-  const out = {};
-  root.querySelectorAll('.summary-content-item, .summary-content-header-lg').forEach(i => {
-    const s = i.querySelectorAll(':scope > span');
-    if (s.length >= 2) out[s[0].innerText.trim()] = s[1].innerText.trim();
-  });
-  const h3 = root.querySelector('.summary-header h3'), p = root.querySelector('.summary-header p');
-  out['_model'] = h3 ? h3.innerText.trim() : '';
-  out['_variant'] = p ? p.innerText.trim() : '';
-  return out;
-}"""
-
-DOWN_CARDS_JS = r"""() => [...document.querySelectorAll('.card-model-configuration')].map(c => {
-  const input = c.querySelector('input.card-model-input');
-  const prices = [...c.querySelectorAll('.card-prices-item')].map(i => i.innerText.replace(/\s+/g, ' ').trim());
-  return {id: input ? input.id : null, prices};
-}).filter(c => c.id)"""
+# Kortene til valg af førstegangsydelse indeholder alt: navn, variant, ydelse, udbetaling, løbetid og total.
+CARDS_JS = r"""() => [...document.querySelectorAll('.card-model-configuration')].map(c => {
+  const t = el => el ? el.innerText.replace(/\s+/g, ' ').trim() : '';
+  return {model: t(c.querySelector('.card-headline h4')), variant: t(c.querySelector('.card-model')),
+          period: t(c.querySelector('.card-leasing-period')),
+          prices: [...c.querySelectorAll('.card-prices-item')].map(i => t(i)),
+          disclaimer: t(c.querySelector('.card-disclaimer'))};
+})"""
 
 
 async def goto(page, url):
@@ -73,48 +63,61 @@ def match_prices(rows, prices):
     return sorted({f"{r['model']} {r['variant']}" for r in rows if not r["new_price"]})
 
 
-async def read_summary(page, want_down, want_km, timeout=6000):
-    """Venter til opsummeringen viser den valgte udbetaling og km og er holdt op med at ændre sig."""
-    t = 0
+async def settled_cards(page, prev_sig, timeout=6000):
+    """Venter til kortene er opdateret efter et km-skift (ydelserne ændrer sig) og er holdt op med at ændre sig."""
+    last, t = None, 0
     while t < timeout:
-        s = await page.evaluate(SUMMARY_JS)
-        if digits(s.get("Førstegangsydelse", "")) == want_down and digits(s.get("Km pr. år", "")) == want_km and s.get("Samlet mdl. ydelse"):
-            await page.wait_for_timeout(250)
-            if await page.evaluate(SUMMARY_JS) == s:
-                return s
-        await page.wait_for_timeout(300)
-        t += 300
-    return None
+        cards = await page.evaluate(CARDS_JS)
+        sig = [(c["prices"], c["disclaimer"]) for c in cards]
+        if cards and sig == last and (sig != prev_sig or t >= 3000):
+            return cards, sig
+        last = sig
+        await page.wait_for_timeout(400)
+        t += 400
+    return [], last
+
+
+def card_row(c, km, url):
+    """Én række ud fra et kort. Gebyr = samlet pris i leasingperioden - udbetaling - ydelse x måneder."""
+    monthly = next((digits(x) for x in c["prices"] if x.startswith("Mdl")), None)
+    down = next((digits(x) for x in c["prices"] if x.startswith("Første")), None)
+    months = digits(c["period"])
+    m = re.search(r"Samlet pris i leasingperioden \((\d+) mdr\.\) fra:\s*([\d.]+)", c["disclaimer"])
+    if monthly is None or down is None or not months:
+        return None
+    fee = 0
+    if m:
+        fee = digits(m.group(2)) - down - monthly * (digits(m.group(1)) or months)
+        if not 0 <= fee <= 10000:
+            print(f"[cupra] ADVARSEL {c['model']} {c['variant']}: usædvanligt gebyr ({fee}) udledt af samlet pris {m.group(2)}")
+            fee = max(0, fee)
+    return {"model": c["model"], "variant": c["variant"], "monthly": str(monthly), "down": str(down),
+            "months": f"{months} mdr.", "km": f"{km:,}".replace(",", "."), "new_price": "", "fee": str(fee), "link": url}
 
 
 async def scrape_configurator(page, url, out):
-    """Henter alle kombinationer af km og førstegangsydelse for én udstyrsvariant."""
+    """Henter alle kombinationer af km og førstegangsydelse for én udstyrsvariant (aflæst direkte fra kortene)."""
     await goto(page, url)
     await page.wait_for_selector("#kilometer-options", timeout=30000)
-    await page.wait_for_selector(".card-model-configuration", timeout=30000)
     kms = [int(v) for v in await page.eval_on_selector_all(
         "#kilometer-options option", "els => els.map(e => e.value).filter(v => /^\\d+$/.test(v))")]
-    got = 0
+    got, prev_sig, bad = 0, None, []
     for km in kms:
         await page.select_option("#kilometer-options", str(km))
-        await page.wait_for_timeout(500)
-        for i, card in enumerate(await page.evaluate(DOWN_CARDS_JS)):
-            want_down = digits(card["prices"][1]) if len(card["prices"]) > 1 else None
-            await page.evaluate("id => document.getElementById(id).click()", card["id"])
-            s = await read_summary(page, want_down, km)
-            if not s:
-                print(f"[cupra] kunne ikke aflæse opsummeringen for {url} ved {km} km, udbetaling {want_down}")
-                continue
-            months = digits(s.get("Leasingperiode", ""))
-            fee = sum(digits(v) for k, v in s.items() if re.search(r"gebyr|stiftelse|etablering", k, re.I))
-            total = next((digits(v) for k, v in s.items() if k.startswith("Totalomkostninger")), None)
-            down = digits(s["Førstegangsydelse"])
-            calc = down + digits(s["Samlet mdl. ydelse"]) * months + fee
-            if total is not None and calc != total:
-                print(f"[cupra] ADVARSEL {s['_model']} {s['_variant']}: beregnet {calc} != side {total}")
-            out.append({"model": s["_model"], "variant": s["_variant"], "monthly": s["Samlet mdl. ydelse"], "down": str(down),
-                        "months": f"{months} mdr.", "km": f"{km:,}".replace(",", "."), "new_price": "", "fee": str(fee), "link": url})
-            got += 1
+        cards, prev_sig = await settled_cards(page, prev_sig)
+        if not cards:
+            bad.append(km)
+            continue
+        for c in cards:
+            row = card_row(c, km, url)
+            if row:
+                out.append(row); got += 1
+            else:
+                print(f"[cupra] kunne ikke aflæse kort ved {km} km: {c}")
+    if bad:
+        print(f"[cupra] ingen kort for udbetaling fundet ved {bad} km på {url} (valgt km: "
+              f"{await page.eval_on_selector('#kilometer-options', 'e => e.value')!r}, "
+              f"antal kort: {await page.locator('.card-model-configuration').count()})")
     return got
 
 
