@@ -16,9 +16,10 @@ defaults: &fields
 default_months: 36
 default_km: 15000
 brands:
-  # vw, audi, skoda og tesla bruger egne adaptere i scraper/custom/ (selectors herunder ignoreres)
+  # vw, audi, skoda, cupra og tesla bruger egne adaptere i scraper/custom/ (selectors herunder ignoreres)
   - {id: vw,       name: Volkswagen, url: "https://www.volkswagen.dk/app/da/leasingpriser/", card: "TODO", fields: *fields}
   - {id: skoda,    name: Škoda,      url: "https://ww4.skoda.dk/privatleasing/",                             card: "TODO", fields: *fields}
+  - {id: cupra,   name: Cupra,      url: "https://www.cupradanmark.dk/online-privatleasing/", card: "TODO", fields: *fields}
   - {id: audi,     name: Audi,       url: "https://ww4.audi.dk/privatleasing/",                              card: "TODO", fields: *fields}
   - {id: hyundai,  name: Hyundai,    url: "https://www.hyundai.com/dk/",                       card: "TODO", fields: *fields}
   - {id: kia,      name: Kia,        url: "https://www.kia.com/dk/",                           card: "TODO", fields: *fields}
