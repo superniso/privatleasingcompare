@@ -52,12 +52,43 @@ def norm(text):
     return " ".join((text or "").split()).casefold()
 
 
-def match_prices(rows, prices):
-    """Prisboksen har titel 'CUPRA Raval Plus' + '135 hk'; opsummeringen har model 'CUPRA Raval' + variant 'Plus 135 hk'.
-    Sat sammen er begge 'CUPRA Raval Plus 135 hk', og det er det, vi matcher på."""
-    by_name = {norm(f"{t} {d}"): price for (t, d), price in prices.items() if d}
+# Prisboksene på cupra.dk: variantnavnet står nogle steder i kortet, andre steder (fx Tavascan) som en overskrift
+# (<h2 class="sf-headline-sm">Plus</h2>) lige over kortet. Vi læser derfor kort og overskrifter i dokumentets rækkefølge.
+PRICE_CARDS_JS = r"""() => {
+  const out = []; let heading = '';
+  document.querySelectorAll('h2.sf-headline-sm, .sf-card-auto').forEach(el => {
+    const txt = e => e ? e.innerText.replace(/\s+/g, ' ').trim() : '';
+    if (el.matches('h2.sf-headline-sm')) { heading = txt(el); return; }
+    const item = [...el.querySelectorAll('.sf-card-auto-pricing-details-item')].find(i => /Vejledende pris/i.test(i.textContent));
+    const d = item && item.querySelector('.sf-card-auto-pricing-details-item-description');
+    if (d) out.push({title: txt(el.querySelector('.sf-card-auto-title-item')), desc: txt(el.querySelector('.sf-card-auto-description-item')),
+                     heading, price: d.innerText});
+  });
+  return out;
+}"""
+
+
+def norm(text):
+    return " ".join((text or "").split()).casefold()
+
+
+def match_prices(rows, cards):
+    """Sætter nypris på rækkerne. Opsummeringen har model 'CUPRA Raval' + variant 'Plus 135 hk'.
+    1) Variant i kortet:       titel 'CUPRA Raval Plus' + '135 hk'        -> 'CUPRA Raval Plus 135 hk'
+    2) Variant som overskrift: titel 'CUPRA Tavascan' + 'Plus' + '190 hk' -> 'CUPRA Tavascan Plus 190 hk' (eller 'Plus 190 hk')"""
+    direct, by_heading = {}, {}
+    for c in cards:
+        price = digits(c["price"])
+        if not price:
+            continue
+        if c["desc"]:
+            direct[norm(f"{c['title']} {c['desc']}")] = price
+        if c.get("heading"):
+            by_heading[norm(f"{c['title']} {c['heading']} {c['desc']}")] = price
+            by_heading[norm(f"{c['heading']} {c['desc']}")] = price
     for r in rows:
-        price = by_name.get(norm(f"{r['model']} {r['variant']}"))
+        full = norm(f"{r['model']} {r['variant']}")
+        price = direct.get(full) or by_heading.get(full) or by_heading.get(norm(r["variant"]))
         if price:
             r["new_price"] = str(price)
     return sorted({f"{r['model']} {r['variant']}" for r in rows if not r["new_price"]})
@@ -151,9 +182,10 @@ async def scrape(page):
         try:
             await goto(page, price_url)
             await page.wait_for_selector(".sf-card-auto-pricing-details-item", timeout=20000)
-            prices = await S.list_prices(page)
-            print(f"[cupra] {slug}: {len({k for k in prices if k[1]})} vejledende priser fundet på {price_url}")
-            missing = match_prices(out[before:], prices)
+            cards = await page.evaluate(PRICE_CARDS_JS)
+            print(f"[cupra] {slug}: {len(cards)} vejledende priser fundet på {price_url}"
+                  f" (overskrifter: {sorted({c['heading'] for c in cards if c['heading']})})")
+            missing = match_prices(out[before:], cards)
         except Exception as e:
             print(f"[cupra] {slug}: ingen priser fundet på {price_url} ({(str(e).splitlines() or [repr(e)])[0][:80]})")
             missing = sorted({f"{r['model']} {r['variant']}" for r in out[before:]})
