@@ -60,7 +60,7 @@ a{color:inherit}
 <p class="sub" id="note" style="margin-top:16px"></p>
 </main>
 <script>
-const COLS=[["brand","Mærke"],["name","Model"],["down","Udbetaling"],["km","Km/år"],["new_price","Nypris fra"],["first","Første pris"],["last","Pris pr. mdr."],["total","Samlet"],["diff","Ændring i alt"],["n","Antal ændringer"],["seen","Sidst ændret"]];
+const COLS=[["brand","Mærke"],["name","Model"],["down","Udbetaling"],["km","Km/år"],["new_price","Nypris fra"],["first","Første pris"],["last","Pris pr. mdr."],["total","Samlet"],["diff","Ændring i alt"],["n","Antal ændringer"],["seen","Sidst hentet"]];
 const NC=COLS.length;
 const $=id=>document.getElementById(id), kr=n=>n==null?"–":n.toLocaleString("da-DK")+" kr.";
 const dato=d=>new Date(d).toLocaleDateString("da-DK",{day:"numeric",month:"short",year:"numeric"});
