@@ -1,15 +1,21 @@
 name: Daglig opdatering
 on:
   schedule:
-    - cron: "17 4 * * *"   # UTC. 04:17 UTC = 05:17 dansk vintertid / 06:17 sommertid. Undgår hele timer, hvor GitHub har mest travlhed.
+    - cron: "17 4 * * *"   # UTC. 04:17 UTC = 05:17 dansk vintertid / 06:17 sommertid
   workflow_dispatch:
 concurrency:
   group: daglig-opdatering
   cancel-in-progress: false
-permissions: {contents: write, pages: write, id-token: write}
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
 jobs:
-  update:
+  # 1) Hent priser, gem data i repositoryet og pak siden som artefakt
+  build:
     runs-on: ubuntu-latest
+    timeout-minutes: 120
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -29,4 +35,14 @@ jobs:
           if git diff --cached --quiet; then echo "Ingen ændringer"; else git commit -m "Opdater priser" && git push; fi
       - uses: actions/upload-pages-artifact@v3
         with: {path: site}
-      - uses: actions/deploy-pages@v4
+
+  # 2) Udgiv siden. Kører som eget job, så en fejl her kan genkøres uden at hente priserne igen
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
