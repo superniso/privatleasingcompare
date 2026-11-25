@@ -16,7 +16,7 @@ defaults: &fields
 default_months: 36
 default_km: 15000
 brands:
-  # vw, audi, skoda, cupra og tesla bruger egne adaptere i scraper/custom/ (selectors herunder ignoreres)
+  # vw, audi, skoda, cupra, bmw og tesla bruger egne adaptere i scraper/custom/ (selectors herunder ignoreres)
   - {id: vw,       name: Volkswagen, url: "https://www.volkswagen.dk/app/da/leasingpriser/", card: "TODO", fields: *fields}
   - {id: skoda,    name: Škoda,      url: "https://ww4.skoda.dk/privatleasing/",                             card: "TODO", fields: *fields}
   - {id: cupra,   name: Cupra,      url: "https://www.cupradanmark.dk/online-privatleasing/", card: "TODO", fields: *fields}
@@ -25,7 +25,7 @@ brands:
   - {id: kia,      name: Kia,        url: "https://www.kia.com/dk/",                           card: "TODO", fields: *fields}
   - {id: tesla,    name: Tesla,      url: "https://www.tesla.com/da_dk/modely/design",                       card: "TODO", fields: *fields}
   - {id: zeekr,    name: Zeekr,      url: "https://www.zeekr.dk/",                             card: "TODO", fields: *fields}
-  - {id: bmw,      name: BMW,        url: "https://www.bmw.dk/",                               card: "TODO", fields: *fields}
+  - {id: bmw,      name: BMW,        url: "https://www.bmw.dk/da/bmw-financial-services-oversikt/tilbud/privatleasing-og-lan.html",                               card: "TODO", fields: *fields}
   - {id: mercedes, name: Mercedes,   url: "https://www.mercedes-benz.dk/",                     card: "TODO", fields: *fields}
   - {id: ford,     name: Ford,       url: "https://www.ford.dk/",                              card: "TODO", fields: *fields}
   - {id: volvo,    name: Volvo,      url: "https://www.volvocars.com/dk/",                     card: "TODO", fields: *fields}
