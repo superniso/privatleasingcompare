@@ -97,6 +97,60 @@ async def find_frame(page, selector, timeout_ms=20000):
     return None
 
 
+async def find_slides(page, timeout_ms=40000):
+    """Leder efter tilbuds-slides i alle rammer og scroller undervejs. Venter IKKE på synlighed, for karruselslides er ofte skjulte."""
+    waited, accepted, found = 0, False, ([], None)
+    while waited < timeout_ms and not found[0]:
+        for fr in page.frames:
+            try:
+                slides = await fr.evaluate(SLIDES_JS)
+            except Exception:
+                continue
+            if slides:
+                found = (slides, fr)
+                break
+        if found[0]:
+            break
+        try:
+            await page.mouse.wheel(0, 1200)
+        except Exception:
+            pass
+        await page.wait_for_timeout(1000)
+        waited += 1000
+        if waited == 15000 and not accepted:  # et samtykkebanner kan holde indholdet tilbage
+            accepted = await S.click_consent(page, S.ACCEPT)
+    slides, fr = found
+    if slides:  # scroll lidt mere og tag den største aflæsning, så sent indlæste slides kommer med
+        for _ in range(4):
+            await page.mouse.wheel(0, 1500)
+            await page.wait_for_timeout(500)
+            try:
+                more = await fr.evaluate(SLIDES_JS)
+            except Exception:
+                break
+            if len(more) > len(slides):
+                slides = more
+    return slides
+
+
+async def diagnose(page):
+    info = []
+    for fr in page.frames:
+        try:
+            info.append({"url": fr.url[:80], "cmp_container": await fr.locator(".cmp-container").count(),
+                         "carousel_items": await fr.locator(".cmp-carousel__item").count(),
+                         "tekst_maanedlig_ydelse": await fr.get_by_text("Månedlig ydelse").count(),
+                         "tekstlaengde": len(await fr.evaluate("document.body ? document.body.innerText : ''"))})
+        except Exception as e:
+            info.append({"url": fr.url[:80], "fejl": str(e)[:60]})
+    print(f"[bmw] rammer på siden: {info}")
+    try:
+        btns = [b.strip() for b in await page.locator("button:visible").all_inner_texts() if b.strip()][:20]
+        print(f"[bmw] slutadresse: {page.url} | synlige knapper: {btns}")
+    except Exception:
+        pass
+
+
 async def settled_rows(frame, prev_sig, timeout=6000):
     """Venter til tabellen er skiftet efter et klik på en modelknap og er holdt op med at ændre sig."""
     last, t = None, 0
@@ -145,14 +199,10 @@ async def scrape(page):
     title = await page.title()
     if "denied" in title.lower():
         raise RuntimeError("BMW afviser forespørgslen (Access Denied) - sandsynligvis blokering af serverens IP")
-    try:
-        await page.wait_for_selector(".cmp-carousel__item, .cmp-container", timeout=30000)
-    except Exception:
-        raise RuntimeError(f"ingen indhold på {LEASING_URL} (sidetitel: {title!r})")
-    for _ in range(6):  # scroll, så alt indhold bliver indlæst
-        await page.mouse.wheel(0, 1500)
-        await page.wait_for_timeout(400)
-    slides = await page.evaluate(SLIDES_JS)
+    slides = await find_slides(page)
+    if not slides:
+        await diagnose(page)
+        raise RuntimeError(f"ingen tilbud fundet på {LEASING_URL} (sidetitel: {title!r}, slutadresse: {page.url})")
     out, seen = [], set()
     for sl in slides:
         row = parse_slide(sl)
