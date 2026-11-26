@@ -5,7 +5,7 @@ Administrationsgebyret pr. måned lægges til ydelsen, og etableringsgebyret reg
   (Kontrol: udbetaling + måneder x (ydelse + admin) + etablering = BMW's 'Totalomkostninger'.)
 Nypris: tabel på priser-bmw-specialmodeller.html, som skifter, når man trykker på en modelknap (button.serie).
 Bruger hjælpefunktioner fra den delte Semler-scraper (_semler.py)."""
-import importlib.util, pathlib, re
+import difflib, importlib.util, pathlib, re
 
 _spec = importlib.util.spec_from_file_location("_semler", pathlib.Path(__file__).with_name("_semler.py"))
 S = importlib.util.module_from_spec(_spec)
@@ -64,7 +64,8 @@ def parse_slide(sl):
         return None
     monthly = base + admin  # administrationsgebyret opkræves hver måned
     calc = down + months * monthly + setup
-    if total is not None and calc != total:
+    # BMW viser ydelsen i hele kroner, men regner totalen med uafrundede beløb: afvigelse op til ca. måneder/2 kr. er afrunding
+    if total is not None and abs(calc - total) > months // 2 + 1:
         print(f"[bmw] ADVARSEL {sl['title']} {sl['variant']}: beregnet {calc} != BMW's totalomkostninger {total}")
     return {"model": sl["title"], "variant": sl["variant"], "monthly": str(monthly), "down": str(down),
             "months": f"{months} mdr.", "km": f"{km:,}".replace(",", "."), "new_price": "", "fee": str(setup), "link": LEASING_URL}
@@ -166,7 +167,7 @@ async def settled_rows(frame, prev_sig, timeout=6000):
 
 
 async def collect_prices(page):
-    """Vejledende priser for alle modeller: tryk på hver modelknap og læs tabellen. Returnerer {normaliseret navn: pris}."""
+    """Vejledende priser for alle modeller: tryk på hver modelknap og læs tabellen. Returnerer {navn i prislisten: pris}."""
     await goto(page, PRICE_URL)
     frame = await find_frame(page, "button.serie")
     if not frame:
@@ -178,18 +179,46 @@ async def collect_prices(page):
         await frame.evaluate("s => document.querySelector(`button.serie[data-slug='${s}']`).click()", slug)
         rows, prev = await settled_rows(frame, prev)
         for r in rows:
-            prices[norm(r["name"])] = digits(r["price"])
+            prices[r["name"]] = digits(r["price"])
+        print(f"[bmw] prisliste {slug}: {[(r['name'], r['price']) for r in rows]}")
     print(f"[bmw] vejledende priser: {len(prices)} modeller/varianter fra {len(slugs)} modelknapper")
     return prices
 
 
+def tokens(text):
+    """Navnet som ordnet liste af bogstav- og talstykker: ligegyldigt med mellemrum, bindestreg og rækkefølge.
+    'iX1 xDrive30' = 'iX1 xDrive 30', 'Super Charged' = 'Supercharged', 'i5 Touring eDrive40' = 'i5 eDrive40 Touring'."""
+    t = (text or "").casefold().replace("super charged", "supercharged")
+    t = re.sub(r"^bmw\s+", "", t)
+    return re.findall(r"[a-zæøå]+|\d+", t)
+
+
 def match_prices(rows, prices):
+    """Nypris på rækkerne. Først præcist match (uanset mellemrum/rækkefølge), derefter - og kun hvis det er entydigt - uden
+    ordene 'sedan' og 'edition'. Tilnærmede match bliver skrevet i loggen."""
+    def key(toks, drop=()):
+        return " ".join(sorted(t for t in toks if t not in drop))
+    exact, loose = {}, {}
+    for name, price in prices.items():
+        toks = tokens(name)
+        exact.setdefault(key(toks), (name, price))
+        loose.setdefault(key(toks, ("sedan", "edition")), []).append((name, price))
     for r in rows:
-        key = norm(f"{r['model']} {r['variant']}")
-        price = prices.get(key) or prices.get(key.removeprefix("bmw "))
-        if price:
-            r["new_price"] = str(price)
-    return sorted({f"{r['model']} {r['variant']}" for r in rows if not r["new_price"]})
+        label = f"{r['model']} {r['variant']}".strip()
+        toks = tokens(label)
+        hit = exact.get(key(toks))
+        if hit:
+            r["new_price"] = str(hit[1]); continue
+        cands = loose.get(key(toks, ("sedan", "edition")), [])
+        if len({p for _, p in cands}) == 1:  # entydigt: samme pris uanset hvilket af navnene
+            r["new_price"] = str(cands[0][1])
+            print(f"[bmw] tilnærmet match: {label!r} -> {cands[0][0]!r} ({cands[0][1]})")
+    missing = sorted({f"{r['model']} {r['variant']}".strip() for r in rows if not r["new_price"]})
+    names = {key(tokens(n)): n for n in prices}
+    for label in missing:
+        near = [names[k] for k in difflib.get_close_matches(key(tokens(label)), list(names), n=2, cutoff=0.6)]
+        print(f"[bmw]   mangler nypris: {label!r} - nærmeste navne i prislisten: {near}")
+    return missing
 
 
 async def scrape(page):
@@ -213,7 +242,7 @@ async def scrape(page):
         key = (row["model"], row["variant"], row["km"], row["down"], row["months"])
         if key not in seen:
             seen.add(key); out.append(row)
-    print(f"[bmw] fandt {len(slides)} slides, {len(out)} tilbud: {[(r['model'], r['variant']) for r in out]}")
+    print(f"[bmw] fandt {len(slides)} slides, {len(out)} tilbud")
     if not out:
         raise RuntimeError("ingen leasingtilbud fundet")
     try:
@@ -222,5 +251,5 @@ async def scrape(page):
         print(f"[bmw] kunne ikke hente vejledende priser: {(str(e).splitlines() or [repr(e)])[0][:100]}")
         missing = sorted({f"{r['model']} {r['variant']}" for r in out})
     if missing:
-        print(f"[bmw] nypris mangler for {missing} - læg dem i new_prices.yaml")
+        print(f"[bmw] nypris mangler for {len(missing)} varianter - se linjerne ovenfor, eller læg dem i new_prices.yaml")
     return out
